@@ -1,0 +1,26 @@
+[project]
+name = "api-oficina-mecanica"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bcrypt<5",
+    "email-validator>=2.3.0",
+    "fastapi>=0.139.2",
+    "passlib[bcrypt]>=1.7.4",
+    "psycopg2-binary>=2.9.12",
+    "pydantic-settings>=2.14.2",
+    "python-dotenv>=1.2.2",
+    "python-jose>=3.5.0",
+    "sqlalchemy>=2.0.51",
+    "uvicorn>=0.51.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "pytest-pythonpath>=0.7.3",
+]
