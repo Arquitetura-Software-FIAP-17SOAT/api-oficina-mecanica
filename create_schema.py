@@ -142,7 +142,7 @@ if __name__ == "__main__":
                 if statement:
                     connection.execute(text(statement))
             connection.commit()
-            print("✅ Schema criado com sucesso!")
+            print("Schema criado com sucesso!")
         except Exception as e:
             connection.rollback()
-            print(f"❌ Erro ao criar schema: {e}")
+            print(f"Erro ao criar schema: {e}")
