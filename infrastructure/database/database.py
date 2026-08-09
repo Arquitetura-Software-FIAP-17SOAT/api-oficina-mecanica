@@ -42,7 +42,19 @@ def create_tables() -> None:
     Cria todas as tabelas mapeadas pelo SQLAlchemy.
     Deve ser chamado na inicialização da aplicação.
     """
-    # Importa os models para registrá-los no metadata
-    from infrastructure.database.models import UserModel
+    # Importa todos os models para registrá-los no metadata
+    from infrastructure.database.models import (
+        UserModel,
+        ClienteModel,
+        MarcaModel,
+        VeiculoModel,
+        ServicoModel,
+        InsumoModel,
+        ServicoInsumoModel,
+        OrdemServicoModel,
+        OrdemServicoServicoModel,
+        StatusOrdemServicoModel,
+        HistoricoOrdemServicoModel,
+    )
 
     Base.metadata.create_all(bind=engine)
