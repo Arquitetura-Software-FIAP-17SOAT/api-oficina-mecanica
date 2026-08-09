@@ -1,6 +1,13 @@
-from datetime import datetime
-
-from sqlalchemy import Column, Integer, String, Text, Numeric, ForeignKey, TIMESTAMP
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    TIMESTAMP,
+    func,
+)
 from sqlalchemy.orm import relationship
 
 from infrastructure.database.database import Base
@@ -50,7 +57,7 @@ class VeiculoModel(Base):
     chassi = Column(String(30), nullable=True)
     modelo = Column(String(100), nullable=False)
     ano_fabricacao = Column(Integer, nullable=True)
-    criado_em = Column(TIMESTAMP, default=datetime.utcnow)
+    criado_em = Column(TIMESTAMP, server_default=func.now())
 
     cliente = relationship("ClienteModel", back_populates="veiculos")
     marca = relationship("MarcaModel", back_populates="veiculos")
@@ -132,7 +139,7 @@ class HistoricoOrdemServicoModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     ordem_servico_id = Column(Integer, ForeignKey("ordens_servico.id"), nullable=False)
     status_id = Column(Integer, ForeignKey("status_ordem_servico.id"), nullable=False)
-    data_status = Column(TIMESTAMP, default=datetime.utcnow)
+    data_status = Column(TIMESTAMP, server_default=func.now())
 
     ordem_servico = relationship("OrdemServicoModel", back_populates="historico")
     status = relationship("StatusOrdemServicoModel", back_populates="historico")

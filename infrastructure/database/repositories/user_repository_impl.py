@@ -51,7 +51,19 @@ class UserRepositoryImpl(UserRepository):
         )
 
     async def find_by_id(self, user_id: int):
-        raise NotImplementedError()
+        model = self.db.get(UserModel, user_id)
+
+        if model is None:
+            return None
+
+        user = User(
+            name=model.nome,
+            email=model.email,
+            hashed_password=model.senha_hash,
+        )
+        user.id = model.id
+
+        return user
 
     async def list(self):
         raise NotImplementedError()
