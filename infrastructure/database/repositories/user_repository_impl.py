@@ -48,9 +48,6 @@ class UserRepositoryImpl(UserRepository):
             .filter(UserModel.email == email)
             .first()
             is not None
-<<<<<<< HEAD
-        )
-=======
         )
 
     async def find_by_id(self, user_id: int):
@@ -59,7 +56,7 @@ class UserRepositoryImpl(UserRepository):
         if model is None:
             return None
 
-        user = User(
+        user = Usuario(
             name=model.nome,
             email=model.email,
             hashed_password=model.senha_hash,
@@ -71,9 +68,8 @@ class UserRepositoryImpl(UserRepository):
     async def list(self):
         raise NotImplementedError()
 
-    async def update(self, user: User):
+    async def update(self, user: Usuario):
         raise NotImplementedError()
 
     async def delete(self, user_id: int):
         raise NotImplementedError()
->>>>>>> e34f6833ad6ee07e6523ec044f79028d2c4f41f3
