@@ -27,10 +27,10 @@ def seed_cliente_veiculo():
             db.add(usuario)
             db.commit()
             db.refresh(usuario)
-            print(f"✅ Usuário criado: {usuario.nome} (ID: {usuario.id})")
+            print(f"Usuario criado: {usuario.nome} (ID: {usuario.id})")
         else:
             usuario = usuario_existente
-            print(f"ℹ️  Usuário já existe: {usuario.nome}")
+            print(f"Usuario ja existe: {usuario.nome}")
         
         # 2. Verificar se o cliente já existe
         cliente_existente = db.query(ClienteModel).filter(
@@ -48,10 +48,10 @@ def seed_cliente_veiculo():
             db.add(cliente)
             db.commit()
             db.refresh(cliente)
-            print(f"✅ Cliente criado: {cliente.nome} (ID: {cliente.id})")
+            print(f"Cliente criado: {cliente.nome} (ID: {cliente.id})")
         else:
             cliente = cliente_existente
-            print(f"ℹ️  Cliente já existe: {cliente.nome}")
+            print(f"Cliente ja existe: {cliente.nome}")
         
         # 3. Verificar se a marca Volkswagen existe
         marca = db.query(MarcaModel).filter(
@@ -64,9 +64,9 @@ def seed_cliente_veiculo():
             db.add(marca)
             db.commit()
             db.refresh(marca)
-            print(f"✅ Marca criada: {marca.nome} (ID: {marca.id})")
+            print(f"Marca criada: {marca.nome} (ID: {marca.id})")
         else:
-            print(f"ℹ️  Marca já existe: {marca.nome}")
+            print(f"Marca ja existe: {marca.nome}")
         
         # 4. Verificar se o veículo já existe
         veiculo_existente = db.query(VeiculoModel).filter(
@@ -88,17 +88,17 @@ def seed_cliente_veiculo():
             db.add(veiculo)
             db.commit()
             db.refresh(veiculo)
-            print(f"✅ Veículo criado: {marca.nome} {veiculo.modelo} {veiculo.ano_fabricacao} (ID: {veiculo.id})")
+            print(f"Veiculo criado: {marca.nome} {veiculo.modelo} {veiculo.ano_fabricacao} (ID: {veiculo.id})")
             print(f"   Placa: {veiculo.placa}")
         else:
             veiculo = veiculo_existente
-            print(f"ℹ️  Veículo já existe: {marca.nome} {veiculo.modelo} {veiculo.ano_fabricacao}")
+            print(f"Veiculo ja existe: {marca.nome} {veiculo.modelo} {veiculo.ano_fabricacao}")
         
-        print("\n✅ Seed de cliente e veículo concluído com sucesso!")
+        print("\nSeed de cliente e veiculo concluido com sucesso!")
         
     except Exception as e:
         db.rollback()
-        print(f"❌ Erro ao executar seed: {e}")
+        print(f"Erro ao executar seed: {e}")
         raise
     finally:
         db.close()

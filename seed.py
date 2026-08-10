@@ -3,15 +3,15 @@ from infrastructure.database.seeders.cliente_veiculo_seeder import seed_cliente_
 from infrastructure.database.seeders.marcas_seeder import seed_marcas
 
 if __name__ == "__main__":
-    print("🌱 Iniciando seeds...\n")
+    print("Iniciando seeds...\n")
     
-    print("1️⃣  Seeding marcas de carros...")
+    print("1. Seeding marcas de carros...")
     seed_marcas()
     
-    print("\n2️⃣  Seeding status de ordem de serviço...")
+    print("\n2. Seeding status de ordem de servico...")
     seed_status_ordem_servico()
     
-    print("\n3️⃣  Seeding cliente e veículo...")
+    print("\n3. Seeding cliente e veiculo...")
     seed_cliente_veiculo()
     
-    print("\n✅ Todos os seeds foram executados com sucesso!")
+    print("\nTodos os seeds foram executados com sucesso!")

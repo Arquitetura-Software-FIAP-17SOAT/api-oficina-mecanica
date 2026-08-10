@@ -83,20 +83,20 @@ def reset_marcas():
     marcas_to_add = [marca for marca in marcas_list if marca.nome not in existing_names]
     
     if not marcas_to_add:
-        print("✅ Todas as marcas já existem no banco!")
+        print("Todas as marcas ja existem no banco!")
         total = db.query(MarcaModel).count()
-        print(f"📋 Total de marcas cadastradas: {total}")
+        print(f"Total de marcas cadastradas: {total}")
         db.close()
         return
     
     db.add_all(marcas_to_add)
     db.commit()
     total = db.query(MarcaModel).count()
-    print(f"✅ {len(marcas_to_add)} novas marcas inseridas!")
-    print(f"📋 Total de marcas cadastradas: {total}")
+    print(f"{len(marcas_to_add)} novas marcas inseridas!")
+    print(f"Total de marcas cadastradas: {total}")
     db.close()
 
 
 if __name__ == "__main__":
-    print("🌱 Resetando marcas de carros...\n")
+    print("Resetando marcas de carros...\n")
     reset_marcas()

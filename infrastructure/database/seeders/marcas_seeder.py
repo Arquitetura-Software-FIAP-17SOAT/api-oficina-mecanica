@@ -85,7 +85,7 @@ def seed_marcas():
     
     db.add_all(marcas_list)
     db.commit()
-    print(f"✅ {len(marcas_list)} marcas inseridas com sucesso!")
+    print(f"{len(marcas_list)} marcas inseridas com sucesso!")
     db.close()
 
 
