@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from domain.entities.user import User
+from domain.entities.usuario import Usuario
 from domain.repositories.user_repository import UserRepository
 from infrastructure.database.models import UserModel
 
@@ -10,7 +10,7 @@ class UserRepositoryImpl(UserRepository):
     def __init__(self, db: Session):
         self.db = db
 
-    async def save(self, user: User) -> User:
+    async def save(self, user: Usuario) -> Usuario:
         model = UserModel(
             nome=user.name,
             email=user.email,
@@ -36,7 +36,7 @@ class UserRepositoryImpl(UserRepository):
         if model is None:
             return None
 
-        return User(
+        return Usuario(
             name=model.nome,
             email=model.email,
             hashed_password=model.senha_hash,
@@ -56,7 +56,7 @@ class UserRepositoryImpl(UserRepository):
         if model is None:
             return None
 
-        user = User(
+        user = Usuario(
             name=model.nome,
             email=model.email,
             hashed_password=model.senha_hash,
@@ -68,7 +68,7 @@ class UserRepositoryImpl(UserRepository):
     async def list(self):
         raise NotImplementedError()
 
-    async def update(self, user: User):
+    async def update(self, user: Usuario):
         raise NotImplementedError()
 
     async def delete(self, user_id: int):

@@ -1,10 +1,10 @@
 import pytest
 
-from domain.entities.user import User
+from domain.entities.usuario import Usuario
 
 
 def test_create_valid_user():
-    user = User(
+    user = Usuario(
         name="Nilson",
         email="test@example.com",
         hashed_password="hashed_password",
@@ -17,7 +17,7 @@ def test_create_valid_user():
 
 def test_name_is_required():
     with pytest.raises(ValueError):
-        User(
+        Usuario(
             name="",
             email="test@example.com",
             hashed_password="hashed_password",
@@ -26,7 +26,7 @@ def test_name_is_required():
 
 def test_email_is_required():
     with pytest.raises(ValueError):
-        User(
+        Usuario(
             name="Nilson",
             email="",
             hashed_password="hashed_password",
@@ -35,7 +35,7 @@ def test_email_is_required():
 
 def test_password_is_required():
     with pytest.raises(ValueError):
-        User(
+        Usuario(
             name="Nilson",
             email="test@example.com",
             hashed_password="",
