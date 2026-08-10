@@ -1,21 +1,21 @@
 from abc import ABC, abstractmethod
 
-from domain.entities.user import User
+from domain.entities.usuario import Usuario
 
 
 class UserRepository(ABC):
     """Contrato para persistência de usuários."""
 
     @abstractmethod
-    async def save(self, user: User) -> User:
+    async def save(self, user: Usuario) -> Usuario:
         pass
 
     @abstractmethod
-    async def find_by_id(self, user_id: int) -> User | None:
+    async def find_by_id(self, user_id: int) -> Usuario | None:
         pass
 
     @abstractmethod
-    async def find_by_email(self, email: str) -> User | None:
+    async def find_by_email(self, email: str) -> Usuario | None:
         pass
 
     @abstractmethod
@@ -23,11 +23,11 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def list(self) -> list[User]:
+    async def list(self) -> list[Usuario]:
         pass
 
     @abstractmethod
-    async def update(self, user: User) -> User:
+    async def update(self, user: Usuario) -> Usuario:
         pass
 
     @abstractmethod

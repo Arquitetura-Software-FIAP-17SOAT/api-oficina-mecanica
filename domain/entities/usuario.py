@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 
-class User:
+class Usuario:
 
     def __init__(
         self,

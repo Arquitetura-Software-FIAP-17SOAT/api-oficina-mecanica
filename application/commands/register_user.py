@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from domain.entities.user import User
+from domain.entities.usuario import Usuario
 from domain.repositories.user_repository import UserRepository
 from infrastructure.auth.password_hasher import PasswordHasher
 
@@ -25,7 +25,7 @@ class RegisterUserUseCase:
         self.user_repository = user_repository
         self.password_hasher = password_hasher
 
-    async def execute(self, command: RegisterUserCommand) -> User:
+    async def execute(self, command: RegisterUserCommand) -> Usuario:
         # Verifica se o e-mail já está cadastrado
         if await self.user_repository.exists_by_email(command.email):
             raise ValueError("E-mail já cadastrado.")
@@ -34,7 +34,7 @@ class RegisterUserUseCase:
         hashed_password = self.password_hasher.hash(command.password)
 
         # Cria a entidade
-        user = User(
+        user = Usuario(
             name=command.name,
             email=command.email,
             hashed_password=hashed_password,

@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, Mock
 
 from application.commands.login_user import LoginUserCommand, LoginUserUseCase
-from domain.entities.user import User
+from domain.entities.usuario import Usuario
 
 
 @pytest.mark.asyncio
@@ -10,7 +10,7 @@ async def test_successful_login_returns_access_token():
     """Testa o login com credenciais válidas."""
 
     mock_repository = AsyncMock()
-    user = User(
+    user = Usuario(
         name="João Silva",
         email="test@example.com",
         hashed_password="hashed_password",
@@ -37,7 +37,7 @@ async def test_login_fails_for_invalid_credentials():
     """Testa o login com senha inválida."""
 
     mock_repository = AsyncMock()
-    user = User(
+    user = Usuario(
         name="João Silva",
         email="test@example.com",
         hashed_password="hashed_password",

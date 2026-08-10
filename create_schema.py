@@ -86,9 +86,12 @@ CREATE TABLE IF NOT EXISTS servico_insumos (
 CREATE TABLE IF NOT EXISTS ordens_servico (
     id SERIAL PRIMARY KEY,
     veiculo_id INT NOT NULL,
-
+    descricao VARCHAR(1000) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'RECEBIDA',
     orcamento NUMERIC(10,2),
     observacoes TEXT,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
     CONSTRAINT fk_os_veiculo
         FOREIGN KEY (veiculo_id)
@@ -98,6 +101,9 @@ CREATE TABLE IF NOT EXISTS ordens_servico (
 CREATE TABLE IF NOT EXISTS ordem_servico_servicos (
     ordem_servico_id INT NOT NULL,
     servico_id INT NOT NULL,
+    valor NUMERIC(10,2) NOT NULL DEFAULT 0.0,
+    quantidade INT NOT NULL DEFAULT 1,
+    data_adicionado TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
     PRIMARY KEY (ordem_servico_id, servico_id),
 

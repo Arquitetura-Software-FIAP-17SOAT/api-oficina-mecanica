@@ -99,8 +99,12 @@ class OrdemServicoModel(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     veiculo_id = Column(Integer, ForeignKey("veiculos.id"), nullable=False)
+    descricao = Column(String(1000), nullable=False)
+    status = Column(String(50), nullable=False, default="RECEBIDA")
     orcamento = Column(Numeric(10, 2), nullable=True)
     observacoes = Column(Text, nullable=True)
+    data_criacao = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+    data_atualizacao = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     veiculo = relationship("VeiculoModel", back_populates="ordens_servico")
     ordem_servico_servicos = relationship("OrdemServicoServicoModel", back_populates="ordem_servico")
@@ -112,6 +116,9 @@ class OrdemServicoServicoModel(Base):
 
     ordem_servico_id = Column(Integer, ForeignKey("ordens_servico.id"), primary_key=True)
     servico_id = Column(Integer, ForeignKey("servicos.id"), primary_key=True)
+    valor = Column(Numeric(10, 2), nullable=False, default=0.0)
+    quantidade = Column(Integer, nullable=False, default=1)
+    data_adicionado = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
 
     ordem_servico = relationship("OrdemServicoModel", back_populates="ordem_servico_servicos")
     servico = relationship("ServicoModel", back_populates="ordem_servico_servicos")
