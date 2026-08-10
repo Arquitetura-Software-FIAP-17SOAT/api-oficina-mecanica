@@ -48,4 +48,32 @@ class UserRepositoryImpl(UserRepository):
             .filter(UserModel.email == email)
             .first()
             is not None
+<<<<<<< HEAD
         )
+=======
+        )
+
+    async def find_by_id(self, user_id: int):
+        model = self.db.get(UserModel, user_id)
+
+        if model is None:
+            return None
+
+        user = User(
+            name=model.nome,
+            email=model.email,
+            hashed_password=model.senha_hash,
+        )
+        user.id = model.id
+
+        return user
+
+    async def list(self):
+        raise NotImplementedError()
+
+    async def update(self, user: User):
+        raise NotImplementedError()
+
+    async def delete(self, user_id: int):
+        raise NotImplementedError()
+>>>>>>> e34f6833ad6ee07e6523ec044f79028d2c4f41f3
