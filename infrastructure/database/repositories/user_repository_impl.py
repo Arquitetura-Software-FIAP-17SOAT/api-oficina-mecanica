@@ -12,9 +12,10 @@ class UserRepositoryImpl(UserRepository):
 
     async def save(self, user: User) -> User:
         model = UserModel(
-            name=user.name,
+            nome=user.name,
             email=user.email,
-            hashed_password=user.hashed_password,
+            telefone=None,
+            senha_hash=user.hashed_password,
         )
 
         self.db.add(model)
@@ -36,9 +37,9 @@ class UserRepositoryImpl(UserRepository):
             return None
 
         return User(
-            name=model.name,
+            name=model.nome,
             email=model.email,
-            hashed_password=model.hashed_password,
+            hashed_password=model.senha_hash,
         )
 
     async def exists_by_email(self, email: str) -> bool:
@@ -50,7 +51,19 @@ class UserRepositoryImpl(UserRepository):
         )
 
     async def find_by_id(self, user_id: int):
-        raise NotImplementedError()
+        model = self.db.get(UserModel, user_id)
+
+        if model is None:
+            return None
+
+        user = User(
+            name=model.nome,
+            email=model.email,
+            hashed_password=model.senha_hash,
+        )
+        user.id = model.id
+
+        return user
 
     async def list(self):
         raise NotImplementedError()

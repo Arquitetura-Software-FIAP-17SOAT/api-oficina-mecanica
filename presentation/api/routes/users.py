@@ -5,8 +5,13 @@ from application.commands.register_user import (
     RegisterUserCommand,
     RegisterUserUseCase,
 )
+from application.commands.login_user import (
+    LoginUserCommand,
+    LoginUserUseCase,
+)
 from presentation.dependencies.dependencies import (
     get_register_user_use_case,
+    get_login_user_use_case,
 )
 
 router = APIRouter(
@@ -24,6 +29,16 @@ class RegisterUserRequest(BaseModel):
 class RegisterUserResponse(BaseModel):
     user_id: int
     message: str
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 
 @router.post(
@@ -52,5 +67,33 @@ async def register_user(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.post(
+    "/login",
+    response_model=LoginResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def login(
+    request: LoginRequest,
+    use_case: LoginUserUseCase = Depends(get_login_user_use_case),
+):
+    try:
+        command = LoginUserCommand(
+            email=request.email,
+            password=request.password,
+        )
+
+        token = await use_case.execute(command)
+
+        return LoginResponse(
+            access_token=token,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
         )
