@@ -6,7 +6,7 @@ from application.commands.update_servico import UpdateServicoUseCase
 from application.queries.get_servico import GetServicoUseCase
 from application.queries.list_servicos import ListServicosUseCase
 from infrastructure.database.database import get_db
-from domain.repositories.servico_repository_impl import (
+from infrastructure.database.repositories.servico_repository_impl import (
     ServicoRepositoryImpl,
 )
 
