@@ -7,10 +7,7 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 load_dotenv()
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://postgres:postgres@localhost:5432/oficina",
-)
+DATABASE_URL = "postgresql+psycopg2://postgres:postgres@localhost:5432/oficina"
 
 engine = create_engine(
     DATABASE_URL,

@@ -6,10 +6,10 @@ from application.commands.update_veiculo import UpdateVeiculoUseCase
 from application.queries.get_veiculo import GetVeiculoUseCase
 from application.queries.list_veiculos import ListVeiculosUseCase
 from infrastructure.database.database import get_db
-from domain.repositories.cliente_repository_impl import (
+from infrastructure.database.repositories.cliente_repository_impl import (
     ClienteRepositoryImpl,
 )
-from domain.repositories.veiculo_repository_impl import (
+from infrastructure.database.repositories.veiculo_repository_impl import (
     VeiculoRepositoryImpl,
 )
 

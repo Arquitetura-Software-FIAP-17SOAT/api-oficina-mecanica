@@ -12,7 +12,7 @@ from application.queries.list_insumos_estoque_baixo import (
     ListInsumosEstoqueBaixoUseCase,
 )
 from infrastructure.database.database import get_db
-from domain.repositories.insumo_repository_impl import (
+from infrastructure.database.repositories.insumo_repository_impl import (
     InsumoRepositoryImpl,
 )
 
