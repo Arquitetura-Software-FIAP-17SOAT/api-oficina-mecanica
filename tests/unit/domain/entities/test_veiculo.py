@@ -80,7 +80,7 @@ def test_modelo_obrigatorio(modelo):
 
 
 def test_modelo_com_tamanho_excedido():
-    """Testa o limite de 100 caracteres do modelo."""
+    """Testa o limite de 100 caracteres do modelo, imposto pela coluna."""
 
     with pytest.raises(ValueError, match="no máximo 100 caracteres"):
         criar_veiculo(modelo="a" * 101)

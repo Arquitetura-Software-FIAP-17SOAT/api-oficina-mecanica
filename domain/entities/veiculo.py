@@ -7,7 +7,6 @@ from domain.value_objects.placa import Placa
 
 class Veiculo:
     MODELO_MAX_LENGTH = 100
-    CHASSI_MAX_LENGTH = 30
     ANO_MINIMO = 1900
 
     def __init__(
