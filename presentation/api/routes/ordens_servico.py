@@ -157,6 +157,9 @@ async def criar_ordem_servico(
             detail=str(e),
         )
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -250,6 +253,9 @@ async def iniciar_diagnostico(
             detail=str(e),
         )
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -292,6 +298,9 @@ async def enviar_para_aprovacao(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
         raise HTTPException(
@@ -353,6 +362,9 @@ async def adicionar_item(
             detail=str(e),
         )
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -396,6 +408,9 @@ async def remover_item(
             detail=str(e),
         )
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -437,6 +452,9 @@ async def aprovar_e_executar(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
         raise HTTPException(
@@ -481,6 +499,9 @@ async def finalizar(
             detail=str(e),
         )
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -524,6 +545,9 @@ async def entregar(
             detail=str(e),
         )
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -566,6 +590,9 @@ async def retornar_diagnostico(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
         raise HTTPException(

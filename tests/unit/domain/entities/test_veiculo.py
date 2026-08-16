@@ -140,3 +140,66 @@ def test_marca_obrigatoria(marca_id):
 
     with pytest.raises(ValueError):
         criar_veiculo(marca_id=marca_id)
+
+
+def test_chassi_como_string_vazia_e_tratado_como_none():
+    """Testa que uma string vazia de chassi equivale a não informar."""
+
+    veiculo = criar_veiculo(chassi="   ")
+
+    assert veiculo.chassi is None
+
+
+def test_ano_fabricacao_nao_inteiro_e_invalido():
+    """Testa que o ano de fabricação deve ser um número inteiro."""
+
+    with pytest.raises(ValueError, match="número inteiro"):
+        criar_veiculo(ano_fabricacao=2020.5)
+
+
+def test_change_placa():
+    """Testa a alteração da placa do veículo."""
+
+    veiculo = criar_veiculo()
+    veiculo.change_placa("XYZ9A87")
+
+    assert str(veiculo.placa) == "XYZ9A87"
+
+
+def test_change_modelo():
+    """Testa a alteração do modelo do veículo."""
+
+    veiculo = criar_veiculo()
+    veiculo.change_modelo("Gol 1.6")
+
+    assert veiculo.modelo == "Gol 1.6"
+
+
+def test_change_chassi():
+    """Testa a alteração do chassi do veículo."""
+
+    veiculo = criar_veiculo(chassi=None)
+    veiculo.change_chassi("9BWZZZ377VT004251")
+
+    assert str(veiculo.chassi) == "9BWZZZ377VT004251"
+
+    veiculo.change_chassi(None)
+    assert veiculo.chassi is None
+
+
+def test_change_ano_fabricacao():
+    """Testa a alteração do ano de fabricação do veículo."""
+
+    veiculo = criar_veiculo()
+    veiculo.change_ano_fabricacao(2022)
+
+    assert veiculo.ano_fabricacao == 2022
+
+
+def test_change_marca():
+    """Testa a alteração da marca do veículo."""
+
+    veiculo = criar_veiculo()
+    veiculo.change_marca(5)
+
+    assert veiculo.marca_id == 5

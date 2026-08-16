@@ -124,3 +124,10 @@ def test_str_devolve_iso():
     data = DataHora(datetime(2026, 8, 9, 15, 30, tzinfo=UTC))
 
     assert str(data) == "2026-08-09T15:30:00+00:00"
+
+
+def test_aceita_outra_instancia_de_data_hora():
+    """Testa que um DataHora já validado é aceito diretamente."""
+
+    original = DataHora(datetime(2026, 8, 9, 15, 30, tzinfo=UTC))
+    assert DataHora(original) == original

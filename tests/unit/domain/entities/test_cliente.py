@@ -109,3 +109,66 @@ def test_usuario_responsavel_obrigatorio(usuario_id):
 
     with pytest.raises(ValueError):
         criar_cliente(usuario_id=usuario_id)
+
+
+def test_cpf_cnpj_como_string_vazia_e_tratado_como_none():
+    """Testa que uma string vazia de CPF/CNPJ equivale a não informar."""
+
+    cliente = criar_cliente(cpf_cnpj="   ")
+
+    assert cliente.cpf_cnpj is None
+
+
+def test_cpf_cnpj_ja_como_value_object_e_reaproveitado():
+    """Testa que um CpfCnpj já validado é aceito diretamente."""
+
+    from domain.value_objects.cpf_cnpj import CpfCnpj
+
+    documento = CpfCnpj("52998224725")
+    cliente = criar_cliente(cpf_cnpj=documento)
+
+    assert cliente.cpf_cnpj is documento
+
+
+def test_email_como_string_vazia_e_tratado_como_none():
+    """Testa que uma string vazia de e-mail equivale a não informar."""
+
+    cliente = criar_cliente(email="   ")
+
+    assert cliente.email is None
+
+
+def test_change_nome():
+    """Testa a alteração do nome do cliente."""
+
+    cliente = criar_cliente()
+    cliente.change_nome("Novo Nome")
+
+    assert cliente.nome == "Novo Nome"
+
+    with pytest.raises(ValueError, match="preenchido"):
+        cliente.change_nome("")
+
+
+def test_change_cpf_cnpj():
+    """Testa a alteração do CPF/CNPJ do cliente."""
+
+    cliente = criar_cliente(cpf_cnpj=None)
+    cliente.change_cpf_cnpj("52998224725")
+
+    assert str(cliente.cpf_cnpj) == "52998224725"
+
+    cliente.change_cpf_cnpj(None)
+    assert cliente.cpf_cnpj is None
+
+
+def test_change_email():
+    """Testa a alteração do e-mail do cliente."""
+
+    cliente = criar_cliente(email=None)
+    cliente.change_email("novo@example.com")
+
+    assert str(cliente.email) == "novo@example.com"
+
+    cliente.change_email(None)
+    assert cliente.email is None

@@ -25,3 +25,32 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-pythonpath>=0.7.3",
 ]
+
+[tool.coverage.run]
+branch = true
+source = [
+    "domain",
+    "application",
+    "infrastructure",
+    "presentation",
+]
+omit = [
+    # Scripts de linha de comando / seeders, não são domínios críticos
+    # cobertos por testes automatizados (fora do escopo desta suíte).
+    "main.py",
+    "seed.py",
+    "create_schema.py",
+    "reset_marcas.py",
+    "consulta_ordem_servico.py",
+    "infrastructure/database/seeders/*",
+    # Contratos (ABCs) sem lógica própria — implementações concretas
+    # é que são exercitadas pelos testes.
+    "domain/repositories/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+]
+show_missing = true

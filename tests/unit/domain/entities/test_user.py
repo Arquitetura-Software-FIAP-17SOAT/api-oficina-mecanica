@@ -40,3 +40,39 @@ def test_password_is_required():
             email="test@example.com",
             hashed_password="",
         )
+
+
+def test_change_name():
+    user = Usuario(
+        name="Nilson", email="test@example.com", hashed_password="hash"
+    )
+
+    user.change_name("Nilson Silva")
+    assert user.name == "Nilson Silva"
+
+    with pytest.raises(ValueError):
+        user.change_name("")
+
+
+def test_change_email():
+    user = Usuario(
+        name="Nilson", email="test@example.com", hashed_password="hash"
+    )
+
+    user.change_email("Novo@Example.com")
+    assert user.email == "novo@example.com"
+
+    with pytest.raises(ValueError):
+        user.change_email("")
+
+
+def test_change_password():
+    user = Usuario(
+        name="Nilson", email="test@example.com", hashed_password="hash"
+    )
+
+    user.change_password("nova-hash")
+    assert user.hashed_password == "nova-hash"
+
+    with pytest.raises(ValueError):
+        user.change_password("")

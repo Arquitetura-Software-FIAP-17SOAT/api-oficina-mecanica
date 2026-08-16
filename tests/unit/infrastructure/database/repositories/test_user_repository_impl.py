@@ -5,7 +5,6 @@ from domain.entities.usuario import Usuario
 from infrastructure.database.repositories.user_repository_impl import UserRepositoryImpl
 
 
-@pytest.mark.skip(reason="UserRepositoryImpl falta implementar métodos abstratos")
 @pytest.mark.asyncio
 async def test_save_maps_user_to_usuarios_table_fields():
     """Testa se o repositório salva os dados nas colunas esperadas da tabela."""

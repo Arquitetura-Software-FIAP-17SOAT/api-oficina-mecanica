@@ -53,3 +53,22 @@ async def test_login_fails_for_invalid_credentials():
 
     with pytest.raises(ValueError, match="Email ou senha inválidos."):
         await use_case.execute(command)
+
+
+@pytest.mark.asyncio
+async def test_login_fails_when_user_does_not_exist():
+    """Testa o login com e-mail não cadastrado."""
+
+    mock_repository = AsyncMock()
+    mock_repository.find_by_email.return_value = None
+
+    mock_hasher = Mock()
+
+    use_case = LoginUserUseCase(mock_repository, mock_hasher)
+
+    command = LoginUserCommand(email="nao-existe@example.com", password="qualquer")
+
+    with pytest.raises(ValueError, match="Email ou senha inválidos."):
+        await use_case.execute(command)
+
+    mock_hasher.verify.assert_not_called()

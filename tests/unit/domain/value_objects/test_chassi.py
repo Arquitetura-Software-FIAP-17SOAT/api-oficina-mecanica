@@ -93,3 +93,10 @@ def test_str_devolve_o_chassi():
     """Testa a conversão para texto, usada na persistência."""
 
     assert str(Chassi(CHASSI_VALIDO.lower())) == CHASSI_VALIDO
+
+
+def test_aceita_outra_instancia_de_chassi():
+    """Testa que um Chassi já validado é aceito diretamente."""
+
+    original = Chassi(CHASSI_VALIDO)
+    assert Chassi(original) == original
