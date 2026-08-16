@@ -10,6 +10,30 @@ from application.commands.criar_ordem_servico import (
     CriarOrdemServicoUseCase,
     VeiculoNaoEncontradoError,
 )
+from application.commands.iniciar_diagnostico_ordem_servico import (
+    IniciarDiagnosticoOrdemServicoCommand,
+    IniciarDiagnosticoOrdemServicoUseCase,
+)
+from application.commands.enviar_ordem_servico_para_aprovacao import (
+    EnviarOrdemServicoParaAprovacaoCommand,
+    EnviarOrdemServicoParaAprovacaoUseCase,
+)
+from application.commands.aprovar_orcamento_ordem_servico import (
+    AprovarOrcamentoOrdemServicoCommand,
+    AprovarOrcamentoOrdemServicoUseCase,
+)
+from application.commands.finalizar_ordem_servico import (
+    FinalizarOrdemServicoCommand,
+    FinalizarOrdemServicoUseCase,
+)
+from application.commands.entregar_ordem_servico import (
+    EntregarOrdemServicoCommand,
+    EntregarOrdemServicoUseCase,
+)
+from application.commands.retornar_ordem_servico_para_diagnostico import (
+    RetornarOrdemServicoParaDiagnosticoCommand,
+    RetornarOrdemServicoParaDiagnosticoUseCase,
+)
 from application.queries.get_ordem_servico_detalhada import (
     GetOrdemServicoDetalhadaUseCase,
     ItemServicoDetalhado,
@@ -22,9 +46,15 @@ from application.queries.list_ordens_servico import (
 )
 from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.dependencies import (
+    get_aprovar_orcamento_use_case,
     get_criar_ordem_servico_use_case,
+    get_entregar_ordem_servico_use_case,
+    get_enviar_ordem_servico_para_aprovacao_use_case,
+    get_finalizar_ordem_servico_use_case,
+    get_iniciar_diagnostico_use_case,
     get_list_ordens_servico_use_case,
     get_ordem_servico_detalhada_use_case,
+    get_retornar_ordem_servico_para_diagnostico_use_case,
 )
 
 router = APIRouter(
@@ -434,20 +464,24 @@ def _para_item_response(item: ItemServicoDetalhado) -> ServicoItemResponse:
 async def iniciar_diagnostico(
     ordem_id: int,
     request: IniciarDiagnosticoRequest,
-    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
+    use_case: IniciarDiagnosticoOrdemServicoUseCase = Depends(
+        get_iniciar_diagnostico_use_case
+    ),
 ):
     """Inicia o diagnóstico de uma ordem de serviço"""
     try:
-        ordem_servico = await use_case.ordem_servico_repository.find_by_id(ordem_id)
+        ordem_servico = await use_case.execute(
+            IniciarDiagnosticoOrdemServicoCommand(
+                ordem_servico_id=ordem_id,
+                observacoes=request.observacoes,
+            )
+        )
 
-        if not ordem_servico:
+        if ordem_servico is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Ordem de serviço {ordem_id} não encontrada",
             )
-
-        ordem_servico.iniciar_diagnostico(request.observacoes)
-        await use_case.ordem_servico_repository.save(ordem_servico)
 
         return StatusChangeResponse(
             id=ordem_servico.id,
@@ -480,20 +514,25 @@ async def iniciar_diagnostico(
 async def enviar_para_aprovacao(
     ordem_id: int,
     request: EnviarParaAprovacaoRequest,
-    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
+    use_case: EnviarOrdemServicoParaAprovacaoUseCase = Depends(
+        get_enviar_ordem_servico_para_aprovacao_use_case
+    ),
 ):
     """Envia ordem de serviço para aprovação do cliente"""
     try:
-        ordem_servico = await use_case.ordem_servico_repository.find_by_id(ordem_id)
+        ordem_servico = await use_case.execute(
+            EnviarOrdemServicoParaAprovacaoCommand(
+                ordem_servico_id=ordem_id,
+                orcamento=request.orcamento,
+                observacoes=request.observacoes,
+            )
+        )
 
-        if not ordem_servico:
+        if ordem_servico is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Ordem de serviço {ordem_id} não encontrada",
             )
-
-        ordem_servico.enviar_para_aprovacao(request.orcamento, request.observacoes)
-        await use_case.ordem_servico_repository.save(ordem_servico)
 
         return StatusChangeResponse(
             id=ordem_servico.id,
@@ -634,20 +673,27 @@ async def remover_item(
 )
 async def aprovar_e_executar(
     ordem_id: int,
-    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
+    use_case: AprovarOrcamentoOrdemServicoUseCase = Depends(
+        get_aprovar_orcamento_use_case
+    ),
 ):
-    """Aprova a ordem de serviço e inicia a execução"""
-    try:
-        ordem_servico = await use_case.ordem_servico_repository.find_by_id(ordem_id)
+    """Aprova a ordem de serviço e inicia a execução.
 
-        if not ordem_servico:
+    Este é o endpoint acionado pelo gatilho externo de aprovação do
+    cliente (ex.: confirmação via aplicativo). Toda a regra de transição
+    de status e a persistência ficam encapsuladas em
+    ``AprovarOrcamentoOrdemServicoUseCase``.
+    """
+    try:
+        ordem_servico = await use_case.execute(
+            AprovarOrcamentoOrdemServicoCommand(ordem_servico_id=ordem_id)
+        )
+
+        if ordem_servico is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Ordem de serviço {ordem_id} não encontrada",
             )
-
-        ordem_servico.aprovar_e_iniciar_execucao()
-        await use_case.ordem_servico_repository.save(ordem_servico)
 
         return StatusChangeResponse(
             id=ordem_servico.id,
@@ -680,20 +726,24 @@ async def aprovar_e_executar(
 async def finalizar(
     ordem_id: int,
     request: FinalizarOSRequest,
-    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
+    use_case: FinalizarOrdemServicoUseCase = Depends(
+        get_finalizar_ordem_servico_use_case
+    ),
 ):
     """Finaliza a ordem de serviço"""
     try:
-        ordem_servico = await use_case.ordem_servico_repository.find_by_id(ordem_id)
+        ordem_servico = await use_case.execute(
+            FinalizarOrdemServicoCommand(
+                ordem_servico_id=ordem_id,
+                observacoes=request.observacoes,
+            )
+        )
 
-        if not ordem_servico:
+        if ordem_servico is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Ordem de serviço {ordem_id} não encontrada",
             )
-
-        ordem_servico.finalizar(request.observacoes)
-        await use_case.ordem_servico_repository.save(ordem_servico)
 
         return StatusChangeResponse(
             id=ordem_servico.id,
@@ -726,20 +776,24 @@ async def finalizar(
 async def entregar(
     ordem_id: int,
     request: EntregarOSRequest,
-    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
+    use_case: EntregarOrdemServicoUseCase = Depends(
+        get_entregar_ordem_servico_use_case
+    ),
 ):
     """Entrega a ordem de serviço ao cliente"""
     try:
-        ordem_servico = await use_case.ordem_servico_repository.find_by_id(ordem_id)
+        ordem_servico = await use_case.execute(
+            EntregarOrdemServicoCommand(
+                ordem_servico_id=ordem_id,
+                observacoes=request.observacoes,
+            )
+        )
 
-        if not ordem_servico:
+        if ordem_servico is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Ordem de serviço {ordem_id} não encontrada",
             )
-
-        ordem_servico.entregar(request.observacoes)
-        await use_case.ordem_servico_repository.save(ordem_servico)
 
         return StatusChangeResponse(
             id=ordem_servico.id,
@@ -772,20 +826,24 @@ async def entregar(
 async def retornar_diagnostico(
     ordem_id: int,
     request: RetornarDiagnosticoRequest,
-    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
+    use_case: RetornarOrdemServicoParaDiagnosticoUseCase = Depends(
+        get_retornar_ordem_servico_para_diagnostico_use_case
+    ),
 ):
     """Retorna a ordem de serviço para diagnóstico"""
     try:
-        ordem_servico = await use_case.ordem_servico_repository.find_by_id(ordem_id)
+        ordem_servico = await use_case.execute(
+            RetornarOrdemServicoParaDiagnosticoCommand(
+                ordem_servico_id=ordem_id,
+                motivo=request.motivo,
+            )
+        )
 
-        if not ordem_servico:
+        if ordem_servico is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Ordem de serviço {ordem_id} não encontrada",
             )
-
-        ordem_servico.retornar_para_diagnostico(request.motivo)
-        await use_case.ordem_servico_repository.save(ordem_servico)
 
         return StatusChangeResponse(
             id=ordem_servico.id,
