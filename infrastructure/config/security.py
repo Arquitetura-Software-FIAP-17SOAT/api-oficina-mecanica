@@ -31,3 +31,17 @@ def create_access_token(data: dict):
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM
     )
+
+
+def decode_access_token(token: str) -> dict:
+    """Decodifica e valida um token de acesso.
+
+    Levanta ``jose.JWTError`` se o token estiver expirado, malformado ou
+    tiver uma assinatura inválida.
+    """
+
+    return jwt.decode(
+        token,
+        settings.SECRET_KEY,
+        algorithms=[settings.ALGORITHM],
+    )

@@ -137,3 +137,71 @@ async def test_delete_retorna_false_quando_ordem_nao_existe(db_session):
     repository = OrdemServicoRepositoryImpl(db_session)
 
     assert await repository.delete(999) is False
+
+
+@pytest.mark.asyncio
+async def test_list_paginado_sem_filtros(db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+
+    repository = OrdemServicoRepositoryImpl(db_session)
+    for _ in range(3):
+        await repository.save(
+            OrdemServico(veiculo_id=str(veiculo.id), descricao="Revisão completa")
+        )
+
+    itens, total = await repository.list_paginado(skip=0, limit=2)
+
+    assert total == 3
+    assert len(itens) == 2
+
+
+@pytest.mark.asyncio
+async def test_list_paginado_filtra_por_status(db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+
+    repository = OrdemServicoRepositoryImpl(db_session)
+    recebida = await repository.save(
+        OrdemServico(veiculo_id=str(veiculo.id), descricao="Revisão completa")
+    )
+    em_diagnostico = await repository.save(
+        OrdemServico(veiculo_id=str(veiculo.id), descricao="Troca de pneus")
+    )
+    em_diagnostico.iniciar_diagnostico()
+    await repository.save(em_diagnostico)
+
+    itens, total = await repository.list_paginado(status="Em diagnóstico")
+
+    assert total == 1
+    assert itens[0].id == em_diagnostico.id
+
+
+@pytest.mark.asyncio
+async def test_list_paginado_filtra_por_placa_e_cpf_cnpj(db_session):
+    seed_status_ordem_servico(db_session)
+    usuario = criar_usuario(db_session, email="ana@example.com")
+    cliente = criar_cliente(db_session, usuario.id, cpf_cnpj="52998224725")
+    marca = criar_marca(db_session)
+    veiculo_alvo = criar_veiculo(db_session, cliente.id, marca.id, placa="XYZ9A87")
+    outro_veiculo = _criar_veiculo(db_session)
+
+    repository = OrdemServicoRepositoryImpl(db_session)
+    alvo = await repository.save(
+        OrdemServico(veiculo_id=str(veiculo_alvo.id), descricao="Revisão completa")
+    )
+    await repository.save(
+        OrdemServico(veiculo_id=str(outro_veiculo.id), descricao="Troca de pneus")
+    )
+
+    itens_por_placa, total_por_placa = await repository.list_paginado(
+        placa="XYZ9A87"
+    )
+    assert total_por_placa == 1
+    assert itens_por_placa[0].id == alvo.id
+
+    itens_por_cpf, total_por_cpf = await repository.list_paginado(
+        cpf_cnpj="52998224725"
+    )
+    assert total_por_cpf == 1
+    assert itens_por_cpf[0].id == alvo.id

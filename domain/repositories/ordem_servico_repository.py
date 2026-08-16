@@ -32,6 +32,26 @@ class OrdemServicoRepository(ABC):
         pass
 
     @abstractmethod
+    async def list_paginado(
+        self,
+        skip: int = 0,
+        limit: int = 10,
+        status: str | None = None,
+        cpf_cnpj: str | None = None,
+        placa: str | None = None,
+    ) -> tuple[list, int]:
+        """Lista ordens de serviço com paginação e filtros opcionais.
+
+        Filtra por status, pelo CPF/CNPJ (apenas dígitos) do cliente dono do
+        veículo e/ou pela placa (normalizada) do veículo.
+
+        Retorna uma tupla ``(itens, total)`` onde ``total`` é a quantidade de
+        registros que atendem aos filtros, ignorando a paginação — usado para
+        calcular o número de páginas.
+        """
+        pass
+
+    @abstractmethod
     async def delete(self, id: int) -> bool:
         """Deleta uma ordem de serviço"""
         pass

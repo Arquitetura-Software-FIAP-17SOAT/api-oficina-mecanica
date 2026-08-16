@@ -105,6 +105,37 @@ async def test_exists_by_nome_e_case_insensitive(db_session):
 
 
 @pytest.mark.asyncio
+async def test_list_by_servico_id(db_session):
+    servico = criar_servico(db_session)
+    insumo_vinculado = criar_insumo(db_session, nome="Óleo 5W30")
+    criar_insumo(db_session, nome="Pastilha de freio")
+
+    from infrastructure.database.models import ServicoInsumoModel
+
+    db_session.add(
+        ServicoInsumoModel(
+            servico_id=servico.id, insumo_id=insumo_vinculado.id, quantidade=1
+        )
+    )
+    db_session.commit()
+
+    repository = InsumoRepositoryImpl(db_session)
+    insumos = await repository.list_by_servico_id(servico.id)
+
+    assert [i.nome for i in insumos] == ["Óleo 5W30"]
+
+
+@pytest.mark.asyncio
+async def test_list_by_servico_id_vazio_quando_sem_vinculos(db_session):
+    servico = criar_servico(db_session)
+
+    repository = InsumoRepositoryImpl(db_session)
+    insumos = await repository.list_by_servico_id(servico.id)
+
+    assert insumos == []
+
+
+@pytest.mark.asyncio
 async def test_has_vinculos(db_session):
     insumo = criar_insumo(db_session)
     servico = criar_servico(db_session)

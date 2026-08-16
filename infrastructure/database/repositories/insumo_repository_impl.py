@@ -113,3 +113,17 @@ class InsumoRepositoryImpl(InsumoRepository):
             .first()
             is not None
         )
+
+    async def list_by_servico_id(self, servico_id: int) -> list[Insumo]:
+        models = (
+            self.db.query(InsumoModel)
+            .join(
+                ServicoInsumoModel,
+                ServicoInsumoModel.insumo_id == InsumoModel.id,
+            )
+            .filter(ServicoInsumoModel.servico_id == servico_id)
+            .order_by(InsumoModel.nome)
+            .all()
+        )
+
+        return [self._to_entity(model) for model in models]

@@ -4,10 +4,12 @@ from domain.entities.ordem_servico import OrdemServico
 from domain.repositories.ordem_servico_repository import OrdemServicoRepository
 from domain.value_objects.status_ordem_servico import StatusOrdemServico
 from infrastructure.database.models import (
-    OrdemServicoModel, 
+    ClienteModel,
+    OrdemServicoModel,
     OrdemServicoServicoModel,
     HistoricoOrdemServicoModel,
     StatusOrdemServicoModel,
+    VeiculoModel,
 )
 
 
@@ -124,6 +126,44 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
         """Lista todas as ordens de serviço com paginação"""
         models = self.db.query(OrdemServicoModel).offset(skip).limit(limit).all()
         return [self._model_to_entity(model) for model in models]
+
+    async def list_paginado(
+        self,
+        skip: int = 0,
+        limit: int = 10,
+        status: str | None = None,
+        cpf_cnpj: str | None = None,
+        placa: str | None = None,
+    ) -> tuple[list, int]:
+        """Lista ordens de serviço com paginação e filtros opcionais"""
+        query = self.db.query(OrdemServicoModel)
+
+        if status:
+            query = query.filter(OrdemServicoModel.status == status)
+
+        if placa or cpf_cnpj:
+            query = query.join(
+                VeiculoModel, OrdemServicoModel.veiculo_id == VeiculoModel.id
+            )
+
+            if placa:
+                query = query.filter(VeiculoModel.placa == placa)
+
+            if cpf_cnpj:
+                query = query.join(
+                    ClienteModel, VeiculoModel.cliente_id == ClienteModel.id
+                ).filter(ClienteModel.cpf_cnpj == cpf_cnpj)
+
+        total = query.count()
+
+        models = (
+            query.order_by(OrdemServicoModel.id.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+        return [self._model_to_entity(model) for model in models], total
 
     async def delete(self, id: int) -> bool:
         """Deleta uma ordem de serviço"""
