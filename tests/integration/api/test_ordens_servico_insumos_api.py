@@ -180,3 +180,92 @@ def test_orcamento_automatico_considera_servicos_e_insumos(client, db_session):
 
     detalhe = client.get(f"/ordens-servico/{ordem_id}").json()
     assert detalhe["orcamento"] == 180.00
+
+
+def _levar_ordem_a_entregue(client, ordem_id, servico_id):
+    """Percorre o fluxo até 'Entregue', para testar a trava de edição de itens."""
+    client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
+    client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(servico_id), "quantidade": 1},
+    )
+    client.post(f"/ordens-servico/{ordem_id}/enviar-aprovacao", json={})
+    client.post(f"/ordens-servico/{ordem_id}/aprovar-executar")
+    client.post(f"/ordens-servico/{ordem_id}/finalizar", json={})
+    client.post(f"/ordens-servico/{ordem_id}/entregar", json={})
+
+
+def test_adicionar_item_falha_em_os_ja_entregue(client, db_session):
+    ordem_id = _criar_ordem(client, db_session)
+    servico = criar_servico(db_session)
+    outro_servico = criar_servico(db_session, nome="Alinhamento")
+    _levar_ordem_a_entregue(client, ordem_id, servico.id)
+
+    resposta = client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(outro_servico.id), "quantidade": 1},
+    )
+
+    assert resposta.status_code == 400
+    assert "Não é possível alterar" in resposta.json()["detail"]
+
+
+def test_remover_item_falha_em_os_ja_entregue(client, db_session):
+    ordem_id = _criar_ordem(client, db_session)
+    servico = criar_servico(db_session)
+    _levar_ordem_a_entregue(client, ordem_id, servico.id)
+
+    resposta = client.post(
+        f"/ordens-servico/{ordem_id}/remover-item",
+        json={"servico_id": str(servico.id)},
+    )
+
+    assert resposta.status_code == 400
+    assert "Não é possível alterar" in resposta.json()["detail"]
+
+
+def test_adicionar_insumo_falha_em_os_ja_entregue(client, db_session):
+    ordem_id = _criar_ordem(client, db_session)
+    servico = criar_servico(db_session)
+    insumo = criar_insumo(db_session, estoque=10)
+    _levar_ordem_a_entregue(client, ordem_id, servico.id)
+
+    resposta = client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-insumo",
+        json={"insumo_id": insumo.id, "quantidade": 1},
+    )
+
+    assert resposta.status_code == 400
+    assert "Não é possível alterar" in resposta.json()["detail"]
+
+    # Não deve ter debitado o estoque: a trava barra antes de mexer no insumo
+    estoque = client.get(f"/insumos/{insumo.id}").json()["estoque"]
+    assert estoque == 10
+
+
+def test_remover_insumo_falha_em_os_ja_entregue(client, db_session):
+    ordem_id = _criar_ordem(client, db_session)
+    servico = criar_servico(db_session)
+    insumo = criar_insumo(db_session, estoque=10)
+
+    client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
+    client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(servico.id), "quantidade": 1},
+    )
+    client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-insumo",
+        json={"insumo_id": insumo.id, "quantidade": 1},
+    )
+    client.post(f"/ordens-servico/{ordem_id}/enviar-aprovacao", json={})
+    client.post(f"/ordens-servico/{ordem_id}/aprovar-executar")
+    client.post(f"/ordens-servico/{ordem_id}/finalizar", json={})
+    client.post(f"/ordens-servico/{ordem_id}/entregar", json={})
+
+    resposta = client.post(
+        f"/ordens-servico/{ordem_id}/remover-insumo",
+        json={"insumo_id": insumo.id},
+    )
+
+    assert resposta.status_code == 400
+    assert "Não é possível alterar" in resposta.json()["detail"]

@@ -206,6 +206,80 @@ class TestAdicionarRemoverInsumos:
         assert ordem_servico.orcamento_calculado == 130.00
 
 
+class TestEdicaoDeItensBloqueadaPorStatus:
+    """Testes da trava que impede alterar serviços/insumos de uma OS já
+    finalizada ou entregue"""
+
+    @pytest.fixture
+    def ordem_finalizada(self):
+        ordem = OrdemServico(
+            veiculo_id="veiculo-123", descricao="Manutenção do veículo"
+        )
+        ordem.adicionar_item("servico-1", 100.00)
+        ordem.iniciar_diagnostico()
+        ordem.enviar_para_aprovacao(orcamento=100.00)
+        ordem.aprovar_e_iniciar_execucao()
+        ordem.finalizar()
+        return ordem
+
+    @pytest.fixture
+    def ordem_entregue(self, ordem_finalizada):
+        ordem_finalizada.entregar()
+        return ordem_finalizada
+
+    @pytest.mark.parametrize("status_fixture", ["ordem_finalizada", "ordem_entregue"])
+    def test_falhar_ao_adicionar_item(self, status_fixture, request):
+        ordem = request.getfixturevalue(status_fixture)
+
+        with pytest.raises(ValueError, match="Não é possível alterar"):
+            ordem.adicionar_item("servico-2", 50.00)
+
+    @pytest.mark.parametrize("status_fixture", ["ordem_finalizada", "ordem_entregue"])
+    def test_falhar_ao_remover_item(self, status_fixture, request):
+        ordem = request.getfixturevalue(status_fixture)
+
+        with pytest.raises(ValueError, match="Não é possível alterar"):
+            ordem.remover_item("servico-1")
+
+    @pytest.mark.parametrize("status_fixture", ["ordem_finalizada", "ordem_entregue"])
+    def test_falhar_ao_adicionar_insumo(self, status_fixture, request):
+        ordem = request.getfixturevalue(status_fixture)
+
+        with pytest.raises(ValueError, match="Não é possível alterar"):
+            ordem.adicionar_insumo("insumo-1", 10.00)
+
+    @pytest.mark.parametrize("status_fixture", ["ordem_finalizada", "ordem_entregue"])
+    def test_falhar_ao_remover_insumo(self, status_fixture, request):
+        ordem = request.getfixturevalue(status_fixture)
+        # precisa existir um insumo para garantir que a trava de status é o
+        # que barra, e não a validação de "insumo não encontrado"
+        ordem.insumos_utilizados.append(
+            {
+                "insumo_id": "insumo-1",
+                "valor": 10.00,
+                "quantidade": 1,
+                "data_adicionado": None,
+            }
+        )
+
+        with pytest.raises(ValueError, match="Não é possível alterar"):
+            ordem.remover_insumo("insumo-1")
+
+    def test_adicionar_item_ainda_funciona_em_execucao(self):
+        """A trava não pode bloquear status intermediários válidos"""
+        ordem = OrdemServico(
+            veiculo_id="veiculo-123", descricao="Manutenção do veículo"
+        )
+        ordem.adicionar_item("servico-1", 100.00)
+        ordem.iniciar_diagnostico()
+        ordem.enviar_para_aprovacao(orcamento=100.00)
+        ordem.aprovar_e_iniciar_execucao()
+
+        ordem.adicionar_item("servico-2", 50.00)
+
+        assert len(ordem.itens) == 2
+
+
 class TestTransicaoDeStatus:
     """Testes para transições de status da OS"""
 
