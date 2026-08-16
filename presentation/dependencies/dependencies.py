@@ -3,6 +3,22 @@ from fastapi import Depends
 from application.commands.login_user import LoginUserUseCase
 from application.commands.register_user import RegisterUserUseCase
 from application.commands.criar_ordem_servico import CriarOrdemServicoUseCase
+from application.commands.iniciar_diagnostico_ordem_servico import (
+    IniciarDiagnosticoOrdemServicoUseCase,
+)
+from application.commands.enviar_ordem_servico_para_aprovacao import (
+    EnviarOrdemServicoParaAprovacaoUseCase,
+)
+from application.commands.aprovar_orcamento_ordem_servico import (
+    AprovarOrcamentoOrdemServicoUseCase,
+)
+from application.commands.finalizar_ordem_servico import (
+    FinalizarOrdemServicoUseCase,
+)
+from application.commands.entregar_ordem_servico import EntregarOrdemServicoUseCase
+from application.commands.retornar_ordem_servico_para_diagnostico import (
+    RetornarOrdemServicoParaDiagnosticoUseCase,
+)
 from application.queries.get_ordem_servico_detalhada import (
     GetOrdemServicoDetalhadaUseCase,
 )
@@ -67,6 +83,66 @@ def get_criar_ordem_servico_use_case(
     return CriarOrdemServicoUseCase(
         ordem_servico_repository=repository,
         db=db,
+    )
+
+
+def get_iniciar_diagnostico_use_case(
+    db=Depends(get_db),
+) -> IniciarDiagnosticoOrdemServicoUseCase:
+    """Factory para injeção de dependências do caso de uso de diagnóstico."""
+
+    return IniciarDiagnosticoOrdemServicoUseCase(
+        ordem_servico_repository=OrdemServicoRepositoryImpl(db),
+    )
+
+
+def get_enviar_ordem_servico_para_aprovacao_use_case(
+    db=Depends(get_db),
+) -> EnviarOrdemServicoParaAprovacaoUseCase:
+    """Factory para injeção de dependências do caso de uso de envio para aprovação."""
+
+    return EnviarOrdemServicoParaAprovacaoUseCase(
+        ordem_servico_repository=OrdemServicoRepositoryImpl(db),
+    )
+
+
+def get_aprovar_orcamento_use_case(
+    db=Depends(get_db),
+) -> AprovarOrcamentoOrdemServicoUseCase:
+    """Factory para injeção de dependências do caso de uso de aprovação do orçamento."""
+
+    return AprovarOrcamentoOrdemServicoUseCase(
+        ordem_servico_repository=OrdemServicoRepositoryImpl(db),
+    )
+
+
+def get_finalizar_ordem_servico_use_case(
+    db=Depends(get_db),
+) -> FinalizarOrdemServicoUseCase:
+    """Factory para injeção de dependências do caso de uso de finalização de OS."""
+
+    return FinalizarOrdemServicoUseCase(
+        ordem_servico_repository=OrdemServicoRepositoryImpl(db),
+    )
+
+
+def get_entregar_ordem_servico_use_case(
+    db=Depends(get_db),
+) -> EntregarOrdemServicoUseCase:
+    """Factory para injeção de dependências do caso de uso de entrega de OS."""
+
+    return EntregarOrdemServicoUseCase(
+        ordem_servico_repository=OrdemServicoRepositoryImpl(db),
+    )
+
+
+def get_retornar_ordem_servico_para_diagnostico_use_case(
+    db=Depends(get_db),
+) -> RetornarOrdemServicoParaDiagnosticoUseCase:
+    """Factory para injeção de dependências do caso de uso de retorno ao diagnóstico."""
+
+    return RetornarOrdemServicoParaDiagnosticoUseCase(
+        ordem_servico_repository=OrdemServicoRepositoryImpl(db),
     )
 
 
