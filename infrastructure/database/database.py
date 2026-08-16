@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 load_dotenv()
 
-DATABASE_URL = "postgresql+psycopg2://postgres:postgres@localhost:5432/oficina"
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 engine = create_engine(
     DATABASE_URL,
@@ -40,7 +40,7 @@ def create_tables() -> None:
     Deve ser chamado na inicialização da aplicação.
     """
     # Importa todos os models para registrá-los no metadata
-    from infrastructure.database.models import (
+    from infrastructure.database.models import ( 
         UserModel,
         ClienteModel,
         MarcaModel,
