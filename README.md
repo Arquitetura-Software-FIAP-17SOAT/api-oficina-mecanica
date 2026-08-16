@@ -1,6 +1,41 @@
 # API Oficina Mecânica
 
-Projeto de API em Python usando FastAPI, DDD e Clean Architecture.
+Projeto de API em Python utilizando FastAPI, DDD e Clean Architecture.
+
+## Pré-requisitos
+
+Para executar a aplicação utilizando Docker, é necessário ter instalado:
+
+- Docker
+- Docker Compose
+
+## Como executar pela primeira vez
+
+Clone o repositório:
+
+```bash
+git clone <URL_DO_REPOSITORIO>
+```
+
+Acesse o diretório do projeto:
+
+```bash
+cd api-oficina-mecanica
+```
+
+Suba a aplicação:
+
+```bash
+docker compose up --build
+```
+
+O Docker Compose será responsável por subir:
+
+- API FastAPI
+- PostgreSQL
+- Configurações necessárias para comunicação entre a API e o banco de dados
+
+A variável `DATABASE_URL` é configurada automaticamente pelo `docker-compose.yml`.
 
 ## Como construir
 
@@ -14,11 +49,21 @@ docker compose build
 docker compose up --build
 ```
 
-A API ficará disponível em `http://localhost:8000`.
+A API ficará disponível em:
 
-## Como ver logs
+```text
+http://localhost:8000
+```
 
-Para visualizar os logs do Docker Compose:
+A documentação Swagger estará disponível em:
+
+```text
+http://localhost:8000/docs
+```
+
+## Como visualizar os logs
+
+Para visualizar os logs de todos os serviços:
 
 ```bash
 docker compose logs -f
@@ -36,10 +81,22 @@ docker compose logs -f api
 docker compose down
 ```
 
+Para remover também os volumes, incluindo os dados persistidos do PostgreSQL:
+
+```bash
+docker compose down -v
+```
+
+> Atenção: o comando acima remove os dados armazenados no banco PostgreSQL local.
+
 ## Como executar os testes
 
 ```bash
 uv run pytest
 ```
 
-> Se não estiver usando um ambiente Docker, certifique-se de ter as dependências instaladas via `uv install`.
+Caso os testes sejam executados fora do Docker, instale/sincronize primeiro as dependências:
+
+```bash
+uv sync
+```
