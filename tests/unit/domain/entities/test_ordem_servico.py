@@ -372,3 +372,88 @@ class TestComportamentosOrdemServico:
 
         descricao = StatusOrdemServico.descrever_status(StatusOrdemServico.EM_EXECUCAO)
         assert "Serviços em execução" in descricao
+
+
+class TestOrcamentoAutomatico:
+    """Testes do orçamento gerado automaticamente a partir dos itens da OS"""
+
+    @pytest.fixture
+    def ordem_servico(self):
+        return OrdemServico(
+            veiculo_id="veiculo-123",
+            descricao="Manutenção do veículo"
+        )
+
+    def test_orcamento_calculado_soma_valor_vezes_quantidade(self, ordem_servico):
+        """Deve somar valor unitário × quantidade de cada serviço"""
+        ordem_servico.adicionar_item("servico-1", 100.00, quantidade=2)
+        ordem_servico.adicionar_item("servico-2", 75.50, quantidade=1)
+
+        assert ordem_servico.orcamento_calculado == 275.50
+
+    def test_orcamento_calculado_e_zero_sem_itens(self, ordem_servico):
+        """Sem serviços adicionados, o total calculado é zero"""
+        assert ordem_servico.orcamento_calculado == 0
+
+    def test_orcamento_calculado_arredonda_para_duas_casas(self, ordem_servico):
+        """Deve arredondar para 2 casas, evitando ruído de ponto flutuante"""
+        ordem_servico.adicionar_item("servico-1", 0.1, quantidade=3)
+
+        assert ordem_servico.orcamento_calculado == 0.30
+
+    def test_envia_para_aprovacao_gerando_orcamento_automaticamente(
+        self, ordem_servico
+    ):
+        """Sem orçamento informado, usa o total calculado dos serviços"""
+        ordem_servico.adicionar_item("servico-1", 120.00, quantidade=2)
+        ordem_servico.adicionar_item("servico-2", 60.00)
+        ordem_servico.iniciar_diagnostico()
+
+        ordem_servico.enviar_para_aprovacao()
+
+        assert ordem_servico.status == StatusOrdemServico.AGUARDANDO_APROVACAO
+        assert ordem_servico.orcamento == 300.00
+
+    def test_orcamento_manual_prevalece_sobre_o_calculado(self, ordem_servico):
+        """Valor informado manualmente permite desconto sobre o total"""
+        ordem_servico.adicionar_item("servico-1", 100.00, quantidade=2)
+        ordem_servico.iniciar_diagnostico()
+
+        ordem_servico.enviar_para_aprovacao(orcamento=180.00)
+
+        assert ordem_servico.orcamento == 180.00
+        assert ordem_servico.orcamento_calculado == 200.00
+
+    def test_falha_ao_gerar_orcamento_automatico_sem_itens(self, ordem_servico):
+        """Sem serviços não há o que orçar — erro deve explicar isso"""
+        ordem_servico.iniciar_diagnostico()
+
+        with pytest.raises(ValueError, match="não possui serviços adicionados"):
+            ordem_servico.enviar_para_aprovacao()
+
+    def test_orcamento_negativo_e_rejeitado_na_criacao(self):
+        """A OS não pode nascer com orçamento negativo"""
+        with pytest.raises(ValueError, match="positivo"):
+            OrdemServico(
+                veiculo_id="veiculo-123",
+                descricao="Manutenção",
+                orcamento=-500.00,
+            )
+
+    def test_orcamento_invalido_e_rejeitado_na_criacao(self):
+        """Valor não numérico de orçamento é rejeitado"""
+        with pytest.raises(ValueError, match="número válido"):
+            OrdemServico(
+                veiculo_id="veiculo-123",
+                descricao="Manutenção",
+                orcamento="abc",
+            )
+
+    def test_resumo_expoe_orcamento_calculado(self, ordem_servico):
+        """O resumo deve mostrar o total calculado ao lado do aprovado"""
+        ordem_servico.adicionar_item("servico-1", 100.00, quantidade=2)
+
+        resumo = ordem_servico.obter_resumo()
+
+        assert resumo["orcamento_calculado"] == 200.00
+        assert resumo["orcamento"] is None
