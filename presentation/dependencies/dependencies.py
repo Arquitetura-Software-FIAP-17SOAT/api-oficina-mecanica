@@ -19,6 +19,9 @@ from application.commands.entregar_ordem_servico import EntregarOrdemServicoUseC
 from application.commands.retornar_ordem_servico_para_diagnostico import (
     RetornarOrdemServicoParaDiagnosticoUseCase,
 )
+from application.queries.consultar_ordem_servico_publica import (
+    ConsultarOrdemServicoPublicaUseCase,
+)
 from application.queries.get_ordem_servico_detalhada import (
     GetOrdemServicoDetalhadaUseCase,
 )
@@ -167,4 +170,14 @@ def get_ordem_servico_detalhada_use_case(
         cliente_repository=ClienteRepositoryImpl(db),
         servico_repository=ServicoRepositoryImpl(db),
         insumo_repository=InsumoRepositoryImpl(db),
+    )
+
+
+def get_consultar_ordem_servico_publica_use_case(
+    db=Depends(get_db),
+) -> ConsultarOrdemServicoPublicaUseCase:
+    """Factory do caso de uso de acompanhamento da OS pelo cliente."""
+
+    return ConsultarOrdemServicoPublicaUseCase(
+        get_ordem_servico_detalhada_use_case=get_ordem_servico_detalhada_use_case(db),
     )
