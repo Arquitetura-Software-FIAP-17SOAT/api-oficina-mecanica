@@ -7,6 +7,7 @@ from infrastructure.database.repositories.ordem_servico_repository_impl import (
 )
 from tests.integration.conftest import (
     criar_cliente,
+    criar_insumo,
     criar_marca,
     criar_servico,
     criar_usuario,
@@ -61,6 +62,46 @@ async def test_save_persiste_itens_e_atualiza_status(db_session):
     assert len(encontrada.itens) == 1
     assert encontrada.itens[0]["servico_id"] == str(servico.id)
     assert len(encontrada.historico_status) == 3
+
+
+@pytest.mark.asyncio
+async def test_save_persiste_insumos_avulsos(db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+    insumo = criar_insumo(db_session, nome="Fusível 10A")
+
+    repository = OrdemServicoRepositoryImpl(db_session)
+    ordem = OrdemServico(veiculo_id=str(veiculo.id), descricao="Revisão completa")
+    ordem = await repository.save(ordem)
+
+    ordem.adicionar_insumo(str(insumo.id), 12.50, quantidade=3)
+    await repository.save(ordem)
+
+    encontrada = await repository.find_by_id(ordem.id)
+    assert len(encontrada.insumos_utilizados) == 1
+    assert encontrada.insumos_utilizados[0]["insumo_id"] == str(insumo.id)
+    assert encontrada.insumos_utilizados[0]["valor"] == 12.50
+    assert encontrada.insumos_utilizados[0]["quantidade"] == 3
+
+
+@pytest.mark.asyncio
+async def test_save_remove_insumo_avulso_ao_atualizar(db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+    insumo = criar_insumo(db_session, nome="Fusível 10A")
+
+    repository = OrdemServicoRepositoryImpl(db_session)
+    ordem = await repository.save(
+        OrdemServico(veiculo_id=str(veiculo.id), descricao="Revisão completa")
+    )
+    ordem.adicionar_insumo(str(insumo.id), 12.50)
+    ordem = await repository.save(ordem)
+
+    ordem.remover_insumo(str(insumo.id))
+    await repository.save(ordem)
+
+    encontrada = await repository.find_by_id(ordem.id)
+    assert encontrada.insumos_utilizados == []
 
 
 @pytest.mark.asyncio

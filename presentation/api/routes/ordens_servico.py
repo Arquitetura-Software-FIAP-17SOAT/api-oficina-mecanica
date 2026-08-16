@@ -10,6 +10,15 @@ from application.commands.criar_ordem_servico import (
     CriarOrdemServicoUseCase,
     VeiculoNaoEncontradoError,
 )
+from application.commands.adicionar_insumo_ordem_servico import (
+    AdicionarInsumoOrdemServicoCommand,
+    AdicionarInsumoOrdemServicoUseCase,
+    InsumoNaoEncontradoError,
+)
+from application.commands.remover_insumo_ordem_servico import (
+    RemoverInsumoOrdemServicoCommand,
+    RemoverInsumoOrdemServicoUseCase,
+)
 from application.commands.iniciar_diagnostico_ordem_servico import (
     IniciarDiagnosticoOrdemServicoCommand,
     IniciarDiagnosticoOrdemServicoUseCase,
@@ -36,6 +45,7 @@ from application.commands.retornar_ordem_servico_para_diagnostico import (
 )
 from application.queries.get_ordem_servico_detalhada import (
     GetOrdemServicoDetalhadaUseCase,
+    InsumoUtilizadoDetalhado,
     ItemServicoDetalhado,
     OrdemServicoDetalhada,
 )
@@ -46,6 +56,8 @@ from application.queries.list_ordens_servico import (
 )
 from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.dependencies import (
+    get_adicionar_insumo_ordem_servico_use_case,
+    get_remover_insumo_ordem_servico_use_case,
     get_aprovar_orcamento_use_case,
     get_criar_ordem_servico_use_case,
     get_entregar_ordem_servico_use_case,
@@ -107,6 +119,17 @@ class AdicionarItemRequest(BaseModel):
 class RemoverItemRequest(BaseModel):
     """Request para remover serviço da ordem"""
     servico_id: str = Field(..., description="ID do serviço a remover")
+
+
+class AdicionarInsumoRequest(BaseModel):
+    """Request para registrar uma peça/insumo avulso usado na ordem"""
+    insumo_id: int = Field(..., description="ID do insumo")
+    quantidade: int = Field(1, description="Quantidade consumida")
+
+
+class RemoverInsumoRequest(BaseModel):
+    """Request para remover um insumo avulso da ordem"""
+    insumo_id: int = Field(..., description="ID do insumo a remover")
 
 
 class FinalizarOSRequest(BaseModel):
@@ -197,6 +220,16 @@ class ServicoItemResponse(BaseModel):
     insumos: list[InsumoResumoResponse] = Field(default_factory=list)
 
 
+class InsumoUtilizadoResponse(BaseModel):
+    """Uma peça/insumo avulso registrado diretamente na OS"""
+
+    insumo_id: str
+    nome: Optional[str] = None
+    quantidade: int
+    valor_unitario: float
+    valor_total: float
+
+
 class OrdemServicoDetailResponse(BaseModel):
     """Response detalhada de uma ordem de serviço"""
 
@@ -209,6 +242,7 @@ class OrdemServicoDetailResponse(BaseModel):
     cliente: Optional[ClienteResumoResponse]
     veiculo: Optional[VeiculoResumoResponse]
     itens: list[ServicoItemResponse]
+    insumos_utilizados: list[InsumoUtilizadoResponse]
     valor_total_itens: float
 
 
@@ -444,6 +478,10 @@ def _para_detail_response(
             else None
         ),
         itens=[_para_item_response(item) for item in detalhe.itens],
+        insumos_utilizados=[
+            _para_insumo_utilizado_response(item)
+            for item in detalhe.insumos_utilizados
+        ],
         valor_total_itens=detalhe.valor_total_itens,
     )
 
@@ -459,6 +497,18 @@ def _para_item_response(item: ItemServicoDetalhado) -> ServicoItemResponse:
             InsumoResumoResponse(id=insumo.id, nome=insumo.nome, estoque=insumo.estoque)
             for insumo in item.insumos
         ],
+    )
+
+
+def _para_insumo_utilizado_response(
+    item: InsumoUtilizadoDetalhado,
+) -> InsumoUtilizadoResponse:
+    return InsumoUtilizadoResponse(
+        insumo_id=item.insumo_id,
+        nome=item.insumo.nome if item.insumo else None,
+        quantidade=item.quantidade,
+        valor_unitario=item.valor_unitario,
+        valor_total=item.valor_total,
     )
 
 
@@ -672,6 +722,125 @@ async def remover_item(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao remover serviço",
+        )
+
+
+@router.post(
+    "/{ordem_id}/adicionar-insumo",
+    response_model=StatusChangeResponse,
+    summary="Adicionar Insumo",
+    description=(
+        "Registra uma peça/insumo avulso consumido na ordem de serviço, fora "
+        "da composição fixa de um serviço, e dá baixa no estoque."
+    ),
+)
+async def adicionar_insumo(
+    ordem_id: int,
+    request: AdicionarInsumoRequest,
+    use_case: AdicionarInsumoOrdemServicoUseCase = Depends(
+        get_adicionar_insumo_ordem_servico_use_case
+    ),
+):
+    """Registra o consumo de um insumo avulso na ordem de serviço"""
+    try:
+        ordem_servico = await use_case.execute(
+            AdicionarInsumoOrdemServicoCommand(
+                ordem_servico_id=ordem_id,
+                insumo_id=request.insumo_id,
+                quantidade=request.quantidade,
+            )
+        )
+
+        if ordem_servico is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ordem de serviço {ordem_id} não encontrada",
+            )
+
+        return StatusChangeResponse(
+            id=ordem_servico.id,
+            status=ordem_servico.status.value,
+            message=(
+                "Insumo adicionado. Total de insumos: "
+                f"{len(ordem_servico.insumos_utilizados)}"
+            ),
+        )
+
+    except InsumoNaoEncontradoError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao adicionar insumo",
+        )
+
+
+@router.post(
+    "/{ordem_id}/remover-insumo",
+    response_model=StatusChangeResponse,
+    summary="Remover Insumo",
+    description=(
+        "Remove um insumo avulso da ordem de serviço e estorna a "
+        "quantidade ao estoque."
+    ),
+)
+async def remover_insumo(
+    ordem_id: int,
+    request: RemoverInsumoRequest,
+    use_case: RemoverInsumoOrdemServicoUseCase = Depends(
+        get_remover_insumo_ordem_servico_use_case
+    ),
+):
+    """Remove um insumo avulso da ordem de serviço"""
+    try:
+        ordem_servico = await use_case.execute(
+            RemoverInsumoOrdemServicoCommand(
+                ordem_servico_id=ordem_id,
+                insumo_id=request.insumo_id,
+            )
+        )
+
+        if ordem_servico is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ordem de serviço {ordem_id} não encontrada",
+            )
+
+        return StatusChangeResponse(
+            id=ordem_servico.id,
+            status=ordem_servico.status.value,
+            message=(
+                "Insumo removido. Total de insumos: "
+                f"{len(ordem_servico.insumos_utilizados)}"
+            ),
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao remover insumo",
         )
 
 

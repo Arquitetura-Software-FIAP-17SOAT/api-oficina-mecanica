@@ -33,6 +33,7 @@ class OrdemServico:
         self.data_criacao = datetime.now(UTC)
         self.data_atualizacao = datetime.now(UTC)
         self.itens = []
+        self.insumos_utilizados = []
         self.historico_status = [
             {
                 "status": StatusOrdemServico.RECEBIDA,
@@ -72,17 +73,79 @@ class OrdemServico:
         self.itens = [item for item in self.itens if item["servico_id"] != servico_id]
         self._atualizar_timestamp()
 
+    def adicionar_insumo(self, insumo_id: str, valor: float, quantidade: int = 1):
+        """Registra uma peça/insumo avulso usado na ordem de serviço.
+
+        Independe da "receita" fixa de um serviço (``ServicoInsumoModel``) —
+        é para o caso em que o mecânico usa uma peça que não está prevista em
+        nenhum serviço cadastrado. As mesmas validações de ``adicionar_item``
+        se aplicam aqui: sem duplicidade, quantidade positiva, valor não
+        negativo.
+        """
+        if not insumo_id:
+            raise ValueError("ID do insumo é obrigatório")
+
+        if quantidade <= 0:
+            raise ValueError("Quantidade deve ser maior que zero")
+
+        if valor < 0:
+            raise ValueError("Valor não pode ser negativo")
+
+        if any(
+            item["insumo_id"] == insumo_id for item in self.insumos_utilizados
+        ):
+            raise ValueError(
+                "Este insumo já foi adicionado à ordem de serviço"
+            )
+
+        self.insumos_utilizados.append({
+            "insumo_id": insumo_id,
+            "valor": float(valor),
+            "quantidade": quantidade,
+            "data_adicionado": datetime.now(UTC)
+        })
+        self._atualizar_timestamp()
+
+    def remover_insumo(self, insumo_id: str) -> int:
+        """Remove um insumo da ordem de serviço.
+
+        Devolve a quantidade que estava registrada, para que o chamador
+        possa estornar o estoque — a entidade não conhece o repositório de
+        insumos, então quem decide o que fazer com a quantidade é o caso de
+        uso.
+        """
+        item = next(
+            (i for i in self.insumos_utilizados if i["insumo_id"] == insumo_id),
+            None,
+        )
+
+        if item is None:
+            raise ValueError("Insumo não encontrado nesta ordem de serviço")
+
+        self.insumos_utilizados = [
+            i for i in self.insumos_utilizados if i["insumo_id"] != insumo_id
+        ]
+        self._atualizar_timestamp()
+
+        return item["quantidade"]
+
     @property
     def orcamento_calculado(self) -> float:
         """Orçamento gerado automaticamente a partir dos itens da OS.
 
-        Soma o valor unitário multiplicado pela quantidade de cada serviço
-        adicionado à ordem. É a base do orçamento enviado ao cliente quando
-        nenhum valor é informado manualmente em ``enviar_para_aprovacao``.
+        Soma o valor unitário multiplicado pela quantidade de cada serviço e
+        de cada insumo avulso adicionado à ordem. É a base do orçamento
+        enviado ao cliente quando nenhum valor é informado manualmente em
+        ``enviar_para_aprovacao``.
         """
-        total = sum(item["valor"] * item["quantidade"] for item in self.itens)
+        total_servicos = sum(
+            item["valor"] * item["quantidade"] for item in self.itens
+        )
+        total_insumos = sum(
+            item["valor"] * item["quantidade"] for item in self.insumos_utilizados
+        )
 
-        return round(total, 2)
+        return round(total_servicos + total_insumos, 2)
 
     def iniciar_diagnostico(self, observacoes: str = None):
         """Transiciona a OS para 'Em diagnóstico'"""
@@ -215,6 +278,7 @@ class OrdemServico:
             "status": self.status.value,
             "status_descricao": StatusOrdemServico.descrever_status(self.status),
             "quantidade_servicos": len(self.itens),
+            "quantidade_insumos": len(self.insumos_utilizados),
             "data_criacao": self.data_criacao.isoformat(),
             "data_atualizacao": self.data_atualizacao.isoformat(),
         }

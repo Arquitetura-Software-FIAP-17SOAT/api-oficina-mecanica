@@ -6,6 +6,7 @@ from domain.value_objects.status_ordem_servico import StatusOrdemServico
 from infrastructure.database.models import (
     ClienteModel,
     OrdemServicoModel,
+    OrdemServicoInsumoModel,
     OrdemServicoServicoModel,
     HistoricoOrdemServicoModel,
     StatusOrdemServicoModel,
@@ -63,10 +64,15 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
                 self.db.query(OrdemServicoServicoModel).filter(
                     OrdemServicoServicoModel.ordem_servico_id == model.id
                 ).delete()
-        
+
+                # Limpar insumos existentes para re-adicionar
+                self.db.query(OrdemServicoInsumoModel).filter(
+                    OrdemServicoInsumoModel.ordem_servico_id == model.id
+                ).delete()
+
         # Salvar histórico de status
         self._salvar_historico(model.id, ordem_servico.historico_status)
-        
+
         # Salvar itens da ordem
         for item in ordem_servico.itens:
             # Verificar se o item já existe
@@ -76,7 +82,7 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
                     OrdemServicoServicoModel.servico_id == int(item['servico_id'])
                 )
             ).first()
-            
+
             if not existing:
                 servico_model = OrdemServicoServicoModel(
                     ordem_servico_id=model.id,
@@ -86,6 +92,25 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
                     data_adicionado=item.get('data_adicionado'),
                 )
                 self.db.add(servico_model)
+
+        # Salvar insumos avulsos da ordem
+        for item in ordem_servico.insumos_utilizados:
+            existing = self.db.query(OrdemServicoInsumoModel).filter(
+                and_(
+                    OrdemServicoInsumoModel.ordem_servico_id == model.id,
+                    OrdemServicoInsumoModel.insumo_id == int(item['insumo_id'])
+                )
+            ).first()
+
+            if not existing:
+                insumo_model = OrdemServicoInsumoModel(
+                    ordem_servico_id=model.id,
+                    insumo_id=int(item['insumo_id']),
+                    valor=item.get('valor', 0.0),
+                    quantidade=item.get('quantidade', 1),
+                    data_adicionado=item.get('data_adicionado'),
+                )
+                self.db.add(insumo_model)
 
         self.db.commit()
         self.db.refresh(model)
@@ -205,7 +230,21 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
                 'quantidade': item_model.quantidade if item_model.quantidade else 1,
                 'data_adicionado': item_model.data_adicionado,
             })
-        
+
+        # Carregar insumos avulsos da ordem
+        insumos_models = self.db.query(OrdemServicoInsumoModel).filter(
+            OrdemServicoInsumoModel.ordem_servico_id == model.id
+        ).all()
+
+        ordem_servico.insumos_utilizados = []
+        for insumo_model in insumos_models:
+            ordem_servico.insumos_utilizados.append({
+                'insumo_id': str(insumo_model.insumo_id),
+                'valor': float(insumo_model.valor) if insumo_model.valor else 0.0,
+                'quantidade': insumo_model.quantidade if insumo_model.quantidade else 1,
+                'data_adicionado': insumo_model.data_adicionado,
+            })
+
         # Carregar histórico de status
         historico_models = self.db.query(HistoricoOrdemServicoModel).filter(
             HistoricoOrdemServicoModel.ordem_servico_id == model.id

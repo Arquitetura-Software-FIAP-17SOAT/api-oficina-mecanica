@@ -90,6 +90,9 @@ class InsumoModel(Base):
     quantidade_minima = Column(Integer, default=0)
 
     servico_insumos = relationship("ServicoInsumoModel", back_populates="insumo")
+    ordem_servico_insumos = relationship(
+        "OrdemServicoInsumoModel", back_populates="insumo"
+    )
 
 
 class ServicoInsumoModel(Base):
@@ -117,6 +120,9 @@ class OrdemServicoModel(Base):
 
     veiculo = relationship("VeiculoModel", back_populates="ordens_servico")
     ordem_servico_servicos = relationship("OrdemServicoServicoModel", back_populates="ordem_servico")
+    ordem_servico_insumos = relationship(
+        "OrdemServicoInsumoModel", back_populates="ordem_servico"
+    )
     historico = relationship("HistoricoOrdemServicoModel", back_populates="ordem_servico")
 
 
@@ -131,6 +137,25 @@ class OrdemServicoServicoModel(Base):
 
     ordem_servico = relationship("OrdemServicoModel", back_populates="ordem_servico_servicos")
     servico = relationship("ServicoModel", back_populates="ordem_servico_servicos")
+
+
+class OrdemServicoInsumoModel(Base):
+    """Peça/insumo avulso registrado diretamente numa ordem de serviço.
+
+    Independente da composição fixa de um serviço (``ServicoInsumoModel``) —
+    é para o consumo de peças fora da receita pré-cadastrada.
+    """
+
+    __tablename__ = "ordem_servico_insumos"
+
+    ordem_servico_id = Column(Integer, ForeignKey("ordens_servico.id"), primary_key=True)
+    insumo_id = Column(Integer, ForeignKey("insumos.id"), primary_key=True)
+    valor = Column(Numeric(10, 2), nullable=False, default=0.0)
+    quantidade = Column(Integer, nullable=False, default=1)
+    data_adicionado = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+
+    ordem_servico = relationship("OrdemServicoModel", back_populates="ordem_servico_insumos")
+    insumo = relationship("InsumoModel", back_populates="ordem_servico_insumos")
 
 
 class StatusOrdemServicoModel(Base):

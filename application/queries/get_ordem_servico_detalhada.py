@@ -28,6 +28,25 @@ class ItemServicoDetalhado:
 
 
 @dataclass
+class InsumoUtilizadoDetalhado:
+    """Uma peça/insumo avulso registrado diretamente na OS.
+
+    Diferente dos insumos em ``ItemServicoDetalhado.insumos`` (a composição
+    fixa de um serviço), este é o consumo registrado à parte — fora da
+    receita de qualquer serviço cadastrado.
+    """
+
+    insumo: Insumo | None
+    insumo_id: str
+    quantidade: int
+    valor_unitario: float
+
+    @property
+    def valor_total(self) -> float:
+        return self.valor_unitario * self.quantidade
+
+
+@dataclass
 class OrdemServicoDetalhada:
     """Visão completa de uma OS: veículo, cliente, itens e insumos usados."""
 
@@ -35,10 +54,11 @@ class OrdemServicoDetalhada:
     veiculo: Veiculo | None
     cliente: Cliente | None
     itens: list[ItemServicoDetalhado] = field(default_factory=list)
+    insumos_utilizados: list[InsumoUtilizadoDetalhado] = field(default_factory=list)
 
     @property
     def valor_total_itens(self) -> float:
-        """Total dos serviços da OS.
+        """Total dos serviços e peças avulsas da OS.
 
         Delega o cálculo à entidade — a regra do orçamento automático vive em
         ``OrdemServico.orcamento_calculado``, não é reimplementada aqui.
@@ -86,12 +106,17 @@ class GetOrdemServicoDetalhadaUseCase:
         itens_detalhados = [
             await self._detalhar_item(item) for item in ordem_servico.itens
         ]
+        insumos_detalhados = [
+            await self._detalhar_insumo_utilizado(item)
+            for item in ordem_servico.insumos_utilizados
+        ]
 
         return OrdemServicoDetalhada(
             ordem_servico=ordem_servico,
             veiculo=veiculo,
             cliente=cliente,
             itens=itens_detalhados,
+            insumos_utilizados=insumos_detalhados,
         )
 
     async def _detalhar_item(self, item: dict) -> ItemServicoDetalhado:
@@ -106,4 +131,16 @@ class GetOrdemServicoDetalhadaUseCase:
             quantidade=item["quantidade"],
             valor_unitario=item["valor"],
             insumos=insumos,
+        )
+
+    async def _detalhar_insumo_utilizado(
+        self, item: dict
+    ) -> InsumoUtilizadoDetalhado:
+        insumo = await self.insumo_repository.find_by_id(int(item["insumo_id"]))
+
+        return InsumoUtilizadoDetalhado(
+            insumo=insumo,
+            insumo_id=item["insumo_id"],
+            quantidade=item["quantidade"],
+            valor_unitario=item["valor"],
         )

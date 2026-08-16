@@ -134,6 +134,78 @@ class TestAdicionarRemoverItens:
             ordem_servico.adicionar_item("", 100.00)
 
 
+class TestAdicionarRemoverInsumos:
+    """Testes para adição e remoção de insumos avulsos na OS"""
+
+    @pytest.fixture
+    def ordem_servico(self):
+        return OrdemServico(
+            veiculo_id="veiculo-123",
+            descricao="Manutenção do veículo"
+        )
+
+    def test_adicionar_insumo_valido(self, ordem_servico):
+        """Deve adicionar um insumo válido à OS"""
+        ordem_servico.adicionar_insumo("insumo-1", 15.00, quantidade=2)
+
+        assert len(ordem_servico.insumos_utilizados) == 1
+        assert ordem_servico.insumos_utilizados[0]["insumo_id"] == "insumo-1"
+        assert ordem_servico.insumos_utilizados[0]["valor"] == 15.00
+        assert ordem_servico.insumos_utilizados[0]["quantidade"] == 2
+
+    def test_adicionar_multiplos_insumos(self, ordem_servico):
+        """Deve adicionar múltiplos insumos diferentes"""
+        ordem_servico.adicionar_insumo("insumo-1", 10.00)
+        ordem_servico.adicionar_insumo("insumo-2", 25.00, quantidade=3)
+
+        assert len(ordem_servico.insumos_utilizados) == 2
+
+    def test_falhar_ao_adicionar_mesmo_insumo_duas_vezes(self, ordem_servico):
+        """Não deve permitir adicionar o mesmo insumo duas vezes"""
+        ordem_servico.adicionar_insumo("insumo-1", 10.00)
+
+        with pytest.raises(ValueError, match="já foi adicionado"):
+            ordem_servico.adicionar_insumo("insumo-1", 12.00)
+
+    def test_falhar_ao_adicionar_insumo_com_quantidade_invalida(self, ordem_servico):
+        """Não deve permitir quantidade menor ou igual a zero"""
+        with pytest.raises(ValueError, match="maior que zero"):
+            ordem_servico.adicionar_insumo("insumo-1", 10.00, quantidade=0)
+
+    def test_falhar_ao_adicionar_insumo_com_valor_negativo(self, ordem_servico):
+        """Não deve permitir valor negativo"""
+        with pytest.raises(ValueError, match="não pode ser negativo"):
+            ordem_servico.adicionar_insumo("insumo-1", -10.00)
+
+    def test_falhar_ao_adicionar_insumo_sem_id(self, ordem_servico):
+        """Não deve permitir adicionar insumo sem o id"""
+        with pytest.raises(ValueError, match="ID do insumo é obrigatório"):
+            ordem_servico.adicionar_insumo("", 10.00)
+
+    def test_remover_insumo_existente(self, ordem_servico):
+        """Deve remover um insumo existente e devolver a quantidade removida"""
+        ordem_servico.adicionar_insumo("insumo-1", 10.00, quantidade=4)
+        ordem_servico.adicionar_insumo("insumo-2", 25.00)
+
+        quantidade = ordem_servico.remover_insumo("insumo-1")
+
+        assert quantidade == 4
+        assert len(ordem_servico.insumos_utilizados) == 1
+        assert ordem_servico.insumos_utilizados[0]["insumo_id"] == "insumo-2"
+
+    def test_falhar_ao_remover_insumo_inexistente(self, ordem_servico):
+        """Não deve permitir remover insumo que não existe"""
+        with pytest.raises(ValueError, match="não encontrado"):
+            ordem_servico.remover_insumo("insumo-inexistente")
+
+    def test_orcamento_calculado_soma_servicos_e_insumos(self, ordem_servico):
+        """O orçamento automático deve considerar serviços e insumos"""
+        ordem_servico.adicionar_item("servico-1", 100.00, quantidade=1)
+        ordem_servico.adicionar_insumo("insumo-1", 15.00, quantidade=2)
+
+        assert ordem_servico.orcamento_calculado == 130.00
+
+
 class TestTransicaoDeStatus:
     """Testes para transições de status da OS"""
 
