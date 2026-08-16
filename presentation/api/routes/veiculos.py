@@ -20,6 +20,7 @@ from application.commands.update_veiculo import (
 )
 from application.queries.get_veiculo import GetVeiculoUseCase
 from application.queries.list_veiculos import ListVeiculosUseCase
+from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.veiculo_dependencies import (
     get_create_veiculo_use_case,
     get_delete_veiculo_use_case,
@@ -31,6 +32,7 @@ from presentation.dependencies.veiculo_dependencies import (
 router = APIRouter(
     prefix="/veiculos",
     tags=["Veículos"],
+    dependencies=[Depends(get_current_user)],
 )
 
 VEICULO_NAO_ENCONTRADO = "Veículo não encontrado."

@@ -23,8 +23,7 @@ from presentation.api.routes.users import router as users_router
 from presentation.api.routes.veiculos import router as veiculos_router
 
 
-@pytest.fixture()
-def client(db_session) -> Iterator[TestClient]:
+def _montar_app(db_session) -> FastAPI:
     app = FastAPI()
     app.include_router(users_router)
     app.include_router(clientes_router)
@@ -35,15 +34,13 @@ def client(db_session) -> Iterator[TestClient]:
 
     app.dependency_overrides[get_db] = lambda: db_session
 
-    with TestClient(app) as test_client:
-        yield test_client
+    return app
 
 
-@pytest.fixture()
-def auth_headers(client: TestClient) -> dict[str, str]:
-    """Registra e autentica um usuário, devolvendo o header Authorization."""
+def _autenticar(test_client: TestClient) -> str:
+    """Registra e autentica um usuário administrativo, devolvendo o token."""
 
-    client.post(
+    test_client.post(
         "/users/register",
         json={
             "name": "Usuário Admin",
@@ -52,11 +49,45 @@ def auth_headers(client: TestClient) -> dict[str, str]:
         },
     )
 
-    resposta = client.post(
+    resposta = test_client.post(
         "/users/login",
         json={"email": "admin@example.com", "password": "senha-super-secreta"},
     )
 
-    token = resposta.json()["access_token"]
+    return resposta.json()["access_token"]
 
-    return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture()
+def unauthenticated_client(db_session) -> Iterator[TestClient]:
+    """Client sem token — para testar o comportamento das rotas sem autenticação.
+
+    É uma instância independente de ``client`` (app própria), mas aponta para o
+    mesmo ``db_session``, então enxerga os mesmos dados criados pelo client
+    autenticado no mesmo teste.
+    """
+
+    with TestClient(_montar_app(db_session)) as test_client:
+        yield test_client
+
+
+@pytest.fixture()
+def client(db_session) -> Iterator[TestClient]:
+    """Client autenticado como usuário administrativo por padrão.
+
+    Todas as rotas administrativas agora exigem JWT (``Depends(get_current_user)``
+    no nível do ``APIRouter``), então a maioria dos testes de integração quer um
+    client já autenticado. Os poucos testes que verificam o comportamento sem
+    token usam ``unauthenticated_client``.
+    """
+
+    with TestClient(_montar_app(db_session)) as test_client:
+        token = _autenticar(test_client)
+        test_client.headers["Authorization"] = f"Bearer {token}"
+        yield test_client
+
+
+@pytest.fixture()
+def auth_headers(client: TestClient) -> dict[str, str]:
+    """Header Authorization equivalente ao já aplicado por padrão em ``client``."""
+
+    return {"Authorization": client.headers["Authorization"]}

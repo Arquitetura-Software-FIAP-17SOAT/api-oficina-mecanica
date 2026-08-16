@@ -101,3 +101,17 @@ def test_operacoes_com_insumo_inexistente_retornam_404(client):
         ).status_code
         == 404
     )
+
+
+def test_operacoes_sem_autenticacao_retornam_401(unauthenticated_client):
+    assert (
+        unauthenticated_client.post("/insumos", json={"nome": "Óleo"}).status_code
+        == 401
+    )
+    assert unauthenticated_client.get("/insumos").status_code == 401
+    assert (
+        unauthenticated_client.post(
+            "/insumos/1/estoque/entrada", json={"quantidade": 1}
+        ).status_code
+        == 401
+    )

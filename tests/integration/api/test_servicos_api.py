@@ -59,3 +59,13 @@ def test_update_servico_inexistente_retorna_404(client):
 
 def test_delete_servico_inexistente_retorna_404(client):
     assert client.delete("/servicos/999").status_code == 404
+
+
+def test_operacoes_sem_autenticacao_retornam_401(unauthenticated_client):
+    assert (
+        unauthenticated_client.post(
+            "/servicos", json={"nome": "Troca de óleo", "valor": "10.00"}
+        ).status_code
+        == 401
+    )
+    assert unauthenticated_client.get("/servicos").status_code == 401

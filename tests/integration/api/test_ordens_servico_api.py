@@ -139,7 +139,9 @@ def test_obter_ordem_inexistente_retorna_404(client, db_session, auth_headers):
     assert response.status_code == 404
 
 
-def test_obter_ordem_sem_autenticacao_retorna_401(client, db_session):
+def test_obter_ordem_sem_autenticacao_retorna_401(
+    client, unauthenticated_client, db_session
+):
     seed_status_ordem_servico(db_session)
     veiculo = _criar_veiculo(db_session)
 
@@ -148,15 +150,27 @@ def test_obter_ordem_sem_autenticacao_retorna_401(client, db_session):
         json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
     ).json()["id"]
 
-    response = client.get(f"/ordens-servico/{ordem_id}")
+    response = unauthenticated_client.get(f"/ordens-servico/{ordem_id}")
 
     assert response.status_code == 401
 
 
-def test_listar_ordens_sem_autenticacao_retorna_401(client, db_session):
+def test_listar_ordens_sem_autenticacao_retorna_401(unauthenticated_client, db_session):
     seed_status_ordem_servico(db_session)
 
-    response = client.get("/ordens-servico")
+    response = unauthenticated_client.get("/ordens-servico")
+
+    assert response.status_code == 401
+
+
+def test_criar_ordem_sem_autenticacao_retorna_401(unauthenticated_client, db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+
+    response = unauthenticated_client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+    )
 
     assert response.status_code == 401
 

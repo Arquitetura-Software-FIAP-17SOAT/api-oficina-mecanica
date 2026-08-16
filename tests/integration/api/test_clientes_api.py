@@ -80,3 +80,21 @@ def test_delete_cliente_inexistente_retorna_404(client):
     response = client.delete("/clientes/999")
 
     assert response.status_code == 404
+
+
+def test_operacoes_sem_autenticacao_retornam_401(unauthenticated_client):
+    assert (
+        unauthenticated_client.post(
+            "/clientes", json={"nome": "Maria Souza", "usuario_id": 1}
+        ).status_code
+        == 401
+    )
+    assert unauthenticated_client.get("/clientes").status_code == 401
+    assert unauthenticated_client.get("/clientes/1").status_code == 401
+    assert (
+        unauthenticated_client.put(
+            "/clientes/1", json={"nome": "Fantasma"}
+        ).status_code
+        == 401
+    )
+    assert unauthenticated_client.delete("/clientes/1").status_code == 401

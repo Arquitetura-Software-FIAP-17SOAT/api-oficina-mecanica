@@ -20,6 +20,7 @@ from application.commands.update_servico import (
 )
 from application.queries.get_servico import GetServicoUseCase
 from application.queries.list_servicos import ListServicosUseCase
+from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.servico_dependencies import (
     get_create_servico_use_case,
     get_delete_servico_use_case,
@@ -31,6 +32,7 @@ from presentation.dependencies.servico_dependencies import (
 router = APIRouter(
     prefix="/servicos",
     tags=["Serviços"],
+    dependencies=[Depends(get_current_user)],
 )
 
 SERVICO_NAO_ENCONTRADO = "Serviço não encontrado."

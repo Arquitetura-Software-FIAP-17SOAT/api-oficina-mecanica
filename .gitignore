@@ -44,3 +44,4 @@ temp/
 *.pem
 *.key
 *.crt
+.docs/
