@@ -32,6 +32,7 @@ from application.queries.list_insumos import ListInsumosUseCase
 from application.queries.list_insumos_estoque_baixo import (
     ListInsumosEstoqueBaixoUseCase,
 )
+from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.insumo_dependencies import (
     get_add_estoque_use_case,
     get_adjust_estoque_use_case,
@@ -47,6 +48,7 @@ from presentation.dependencies.insumo_dependencies import (
 router = APIRouter(
     prefix="/insumos",
     tags=["Insumos"],
+    dependencies=[Depends(get_current_user)],
 )
 
 INSUMO_NAO_ENCONTRADO = "Insumo não encontrado."

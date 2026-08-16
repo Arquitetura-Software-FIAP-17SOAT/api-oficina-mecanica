@@ -60,6 +60,7 @@ from presentation.dependencies.dependencies import (
 router = APIRouter(
     prefix="/ordens-servico",
     tags=["Ordens de Serviço"],
+    dependencies=[Depends(get_current_user)],
 )
 
 
@@ -303,7 +304,6 @@ async def listar_ordens_servico(
         10, ge=1, le=100, description="Quantidade de itens por página (máx. 100)."
     ),
     use_case: ListOrdensServicoUseCase = Depends(get_list_ordens_servico_use_case),
-    current_user: dict = Depends(get_current_user),
 ):
     """Lista ordens de serviço de forma paginada, com filtros opcionais."""
     try:
@@ -367,7 +367,6 @@ async def obter_ordem_servico(
     use_case: GetOrdemServicoDetalhadaUseCase = Depends(
         get_ordem_servico_detalhada_use_case
     ),
-    current_user: dict = Depends(get_current_user),
 ):
     """
     Obtém os detalhes completos de uma ordem de serviço.

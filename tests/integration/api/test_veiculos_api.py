@@ -93,3 +93,19 @@ def test_operacoes_com_veiculo_inexistente_retornam_404(client):
         == 404
     )
     assert client.delete("/veiculos/999").status_code == 404
+
+
+def test_operacoes_sem_autenticacao_retornam_401(unauthenticated_client):
+    assert (
+        unauthenticated_client.post(
+            "/veiculos",
+            json={
+                "cliente_id": 1,
+                "marca_id": 1,
+                "placa": "ABC1D23",
+                "modelo": "Gol",
+            },
+        ).status_code
+        == 401
+    )
+    assert unauthenticated_client.get("/veiculos").status_code == 401

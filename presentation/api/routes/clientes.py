@@ -17,6 +17,7 @@ from application.commands.update_cliente import (
 )
 from application.queries.get_cliente import GetClienteUseCase
 from application.queries.list_clientes import ListClientesUseCase
+from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.cliente_dependencies import (
     get_create_cliente_use_case,
     get_delete_cliente_use_case,
@@ -28,6 +29,7 @@ from presentation.dependencies.cliente_dependencies import (
 router = APIRouter(
     prefix="/clientes",
     tags=["Clientes"],
+    dependencies=[Depends(get_current_user)],
 )
 
 CLIENTE_NAO_ENCONTRADO = "Cliente não encontrado."
