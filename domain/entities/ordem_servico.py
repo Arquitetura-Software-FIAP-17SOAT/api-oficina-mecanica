@@ -25,7 +25,9 @@ class OrdemServico:
         self.id = id  # Será preenchido pelo banco após salvar
         self.veiculo_id = veiculo_id
         self.descricao = Descricao(descricao)
-        self.orcamento = float(orcamento) if orcamento else None
+        self.orcamento = (
+            self._validar_orcamento(orcamento) if orcamento is not None else None
+        )
         self.observacoes = observacoes
         self.status = StatusOrdemServico.RECEBIDA
         self.data_criacao = datetime.now(UTC)
@@ -70,6 +72,18 @@ class OrdemServico:
         self.itens = [item for item in self.itens if item["servico_id"] != servico_id]
         self._atualizar_timestamp()
 
+    @property
+    def orcamento_calculado(self) -> float:
+        """Orçamento gerado automaticamente a partir dos itens da OS.
+
+        Soma o valor unitário multiplicado pela quantidade de cada serviço
+        adicionado à ordem. É a base do orçamento enviado ao cliente quando
+        nenhum valor é informado manualmente em ``enviar_para_aprovacao``.
+        """
+        total = sum(item["valor"] * item["quantidade"] for item in self.itens)
+
+        return round(total, 2)
+
     def iniciar_diagnostico(self, observacoes: str = None):
         """Transiciona a OS para 'Em diagnóstico'"""
         self._validar_transicao(StatusOrdemServico.EM_DIAGNOSTICO)
@@ -83,14 +97,26 @@ class OrdemServico:
             "Diagnóstico iniciado"
         )
 
-    def enviar_para_aprovacao(self, orcamento: float, observacoes: str = None):
-        """Transiciona para 'Aguardando aprovação' com orcamento definido"""
+    def enviar_para_aprovacao(self, orcamento: float = None, observacoes: str = None):
+        """Transiciona para 'Aguardando aprovação' com o orçamento definido.
+
+        Quando ``orcamento`` não é informado, ele é gerado automaticamente a
+        partir dos serviços já adicionados à OS (ver ``orcamento_calculado``).
+        Informar o valor manualmente continua sendo possível — é o que permite
+        aplicar desconto ou acréscimo sobre o total calculado.
+        """
         self._validar_transicao(StatusOrdemServico.AGUARDANDO_APROVACAO)
-        
-        if orcamento <= 0:
-            raise ValueError("Orçamento deve ser um valor positivo")
-        
-        self.orcamento = orcamento
+
+        if orcamento is None:
+            if not self.itens:
+                raise ValueError(
+                    "Não é possível gerar o orçamento automaticamente: a ordem "
+                    "de serviço não possui serviços adicionados"
+                )
+
+            orcamento = self.orcamento_calculado
+
+        self.orcamento = self._validar_orcamento(orcamento)
         self.status = StatusOrdemServico.AGUARDANDO_APROVACAO
         
         if observacoes:
@@ -185,12 +211,26 @@ class OrdemServico:
             "veiculo_id": self.veiculo_id,
             "descricao": str(self.descricao),
             "orcamento": self.orcamento,
+            "orcamento_calculado": self.orcamento_calculado,
             "status": self.status.value,
             "status_descricao": StatusOrdemServico.descrever_status(self.status),
             "quantidade_servicos": len(self.itens),
             "data_criacao": self.data_criacao.isoformat(),
             "data_atualizacao": self.data_atualizacao.isoformat(),
         }
+
+    @staticmethod
+    def _validar_orcamento(orcamento) -> float:
+        """Valida um valor de orçamento, calculado ou informado manualmente."""
+        try:
+            valor = float(orcamento)
+        except (TypeError, ValueError):
+            raise ValueError("Orçamento deve ser um número válido")
+
+        if valor <= 0:
+            raise ValueError("Orçamento deve ser um valor positivo")
+
+        return valor
 
     def _validar_transicao(self, novo_status: StatusOrdemServico):
         """Valida se a transição de status é permitida"""

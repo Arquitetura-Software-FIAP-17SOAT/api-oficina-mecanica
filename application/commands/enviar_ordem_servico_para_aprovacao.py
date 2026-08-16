@@ -6,17 +6,23 @@ from domain.repositories.ordem_servico_repository import OrdemServicoRepository
 
 @dataclass
 class EnviarOrdemServicoParaAprovacaoCommand:
-    """Comando para enviar o orçamento da ordem de serviço para aprovação."""
+    """Comando para enviar o orçamento da ordem de serviço para aprovação.
+
+    ``orcamento`` é opcional: quando omitido, a entidade gera o valor
+    automaticamente a partir dos serviços adicionados à OS.
+    """
 
     ordem_servico_id: int
-    orcamento: float
+    orcamento: float | None = None
     observacoes: str | None = None
 
 
 class EnviarOrdemServicoParaAprovacaoUseCase:
     """Caso de uso acionado quando o orçamento é gerado e enviado ao cliente.
 
-    Move a ordem de serviço de 'Em diagnóstico' para 'Aguardando aprovação'.
+    Move a ordem de serviço de 'Em diagnóstico' para 'Aguardando aprovação',
+    com o orçamento calculado a partir dos itens da OS ou, quando informado,
+    com o valor manual enviado pelo atendente.
     """
 
     def __init__(self, ordem_servico_repository: OrdemServicoRepository):

@@ -81,7 +81,15 @@ class IniciarDiagnosticoRequest(BaseModel):
 
 class EnviarParaAprovacaoRequest(BaseModel):
     """Request para enviar para aprovação"""
-    orcamento: float = Field(..., description="Orçamento definido")
+    orcamento: Optional[float] = Field(
+        None,
+        description=(
+            "Orçamento a ser aprovado pelo cliente. Se omitido, é gerado "
+            "automaticamente a partir dos serviços adicionados à OS. "
+            "Informe um valor para aplicar desconto ou acréscimo sobre o total."
+        ),
+        examples=[350.00],
+    )
     observacoes: Optional[str] = Field(None, description="Observações")
 
 
@@ -536,7 +544,10 @@ async def enviar_para_aprovacao(
         return StatusChangeResponse(
             id=ordem_servico.id,
             status=ordem_servico.status.value,
-            message="Ordem enviada para aprovação",
+            message=(
+                "Ordem enviada para aprovação. "
+                f"Orçamento: R$ {ordem_servico.orcamento:.2f}"
+            ),
         )
 
     except ValueError as e:

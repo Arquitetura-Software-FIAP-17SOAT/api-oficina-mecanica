@@ -351,3 +351,76 @@ def test_operacoes_com_ordem_inexistente_retornam_404(client, db_session):
         ).status_code
         == 404
     )
+
+
+def test_enviar_aprovacao_gera_orcamento_automaticamente(
+    client, db_session, auth_headers
+):
+    """Sem 'orcamento' no corpo, a API deve orçar a partir dos serviços da OS."""
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+    servico = criar_servico(db_session)  # valor 120.00
+
+    ordem_id = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+    ).json()["id"]
+
+    client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
+    client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(servico.id), "quantidade": 2},
+    )
+
+    resposta = client.post(f"/ordens-servico/{ordem_id}/enviar-aprovacao", json={})
+
+    assert resposta.status_code == 200
+    assert resposta.json()["status"] == "Aguardando aprovação"
+    assert "240.00" in resposta.json()["message"]
+
+    detalhe = client.get(f"/ordens-servico/{ordem_id}", headers=auth_headers).json()
+    assert detalhe["orcamento"] == 240.00
+    assert detalhe["valor_total_itens"] == 240.00
+
+
+def test_enviar_aprovacao_com_orcamento_manual_prevalece(client, db_session):
+    """Valor informado no corpo sobrepõe o total calculado (desconto)."""
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+    servico = criar_servico(db_session)  # valor 120.00
+
+    ordem_id = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+    ).json()["id"]
+
+    client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
+    client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(servico.id), "quantidade": 2},
+    )
+
+    resposta = client.post(
+        f"/ordens-servico/{ordem_id}/enviar-aprovacao", json={"orcamento": 200.00}
+    )
+
+    assert resposta.status_code == 200
+    assert "200.00" in resposta.json()["message"]
+
+
+def test_enviar_aprovacao_sem_itens_retorna_400(client, db_session):
+    """Sem serviços adicionados não há o que orçar automaticamente."""
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+
+    ordem_id = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+    ).json()["id"]
+
+    client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
+
+    resposta = client.post(f"/ordens-servico/{ordem_id}/enviar-aprovacao", json={})
+
+    assert resposta.status_code == 400
+    assert "não possui serviços adicionados" in resposta.json()["detail"]

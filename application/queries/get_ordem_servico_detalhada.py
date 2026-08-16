@@ -38,7 +38,12 @@ class OrdemServicoDetalhada:
 
     @property
     def valor_total_itens(self) -> float:
-        return sum(item.valor_total for item in self.itens)
+        """Total dos serviços da OS.
+
+        Delega o cálculo à entidade — a regra do orçamento automático vive em
+        ``OrdemServico.orcamento_calculado``, não é reimplementada aqui.
+        """
+        return self.ordem_servico.orcamento_calculado
 
 
 class GetOrdemServicoDetalhadaUseCase:

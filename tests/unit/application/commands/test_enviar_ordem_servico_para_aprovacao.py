@@ -66,3 +66,41 @@ async def test_falha_com_orcamento_nao_positivo():
         )
 
     mock_repository.save.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_gera_orcamento_automaticamente_quando_nao_informado():
+    """Comando sem orçamento deve usar o total calculado dos itens da OS."""
+    ordem = _ordem_em_diagnostico()
+    ordem.adicionar_item("10", 150.0, quantidade=2)
+
+    mock_repository = AsyncMock()
+    mock_repository.find_by_id.return_value = ordem
+    mock_repository.save.side_effect = lambda o: o
+
+    use_case = EnviarOrdemServicoParaAprovacaoUseCase(mock_repository)
+    resultado = await use_case.execute(
+        EnviarOrdemServicoParaAprovacaoCommand(ordem_servico_id=1)
+    )
+
+    assert resultado.status == StatusOrdemServico.AGUARDANDO_APROVACAO
+    assert resultado.orcamento == 300.0
+    mock_repository.save.assert_awaited_once_with(ordem)
+
+
+@pytest.mark.asyncio
+async def test_falha_ao_gerar_orcamento_automatico_sem_itens():
+    """Sem serviços na OS, o orçamento automático não pode ser gerado."""
+    ordem = _ordem_em_diagnostico()
+
+    mock_repository = AsyncMock()
+    mock_repository.find_by_id.return_value = ordem
+
+    use_case = EnviarOrdemServicoParaAprovacaoUseCase(mock_repository)
+
+    with pytest.raises(ValueError, match="não possui serviços adicionados"):
+        await use_case.execute(
+            EnviarOrdemServicoParaAprovacaoCommand(ordem_servico_id=1)
+        )
+
+    mock_repository.save.assert_not_called()
