@@ -15,7 +15,7 @@ def _criar_veiculo(db_session):
     return criar_veiculo(db_session, cliente.id, marca.id)
 
 
-def test_fluxo_completo_da_ordem_de_servico(client, db_session):
+def test_fluxo_completo_da_ordem_de_servico(client, db_session, auth_headers):
     seed_status_ordem_servico(db_session)
     veiculo = _criar_veiculo(db_session)
     servico = criar_servico(db_session)
@@ -30,9 +30,14 @@ def test_fluxo_completo_da_ordem_de_servico(client, db_session):
 
     ordem_id = ordem["id"]
 
-    resposta_get = client.get(f"/ordens-servico/{ordem_id}")
+    resposta_get = client.get(
+        f"/ordens-servico/{ordem_id}", headers=auth_headers
+    )
     assert resposta_get.status_code == 200
-    assert resposta_get.json()["quantidade_servicos"] == 0
+    detalhe = resposta_get.json()
+    assert detalhe["itens"] == []
+    assert detalhe["cliente"]["nome"] == "Maria Souza"
+    assert detalhe["veiculo"]["placa"] == "ABC1D23"
 
     resposta_diagnostico = client.post(
         f"/ordens-servico/{ordem_id}/iniciar-diagnostico",
@@ -63,8 +68,17 @@ def test_fluxo_completo_da_ordem_de_servico(client, db_session):
 
     client.post(
         f"/ordens-servico/{ordem_id}/adicionar-item",
-        json={"servico_id": str(servico.id), "quantidade": 1},
+        json={"servico_id": str(servico.id), "quantidade": 2},
     )
+
+    resposta_detalhe = client.get(
+        f"/ordens-servico/{ordem_id}", headers=auth_headers
+    )
+    item = resposta_detalhe.json()["itens"][0]
+    assert item["servico_id"] == str(servico.id)
+    assert item["nome"] == "Troca de óleo"
+    assert item["quantidade"] == 2
+    assert item["valor_total"] == item["valor_unitario"] * 2
 
     resposta_aprovar = client.post(f"/ordens-servico/{ordem_id}/aprovar-executar")
     assert resposta_aprovar.status_code == 200
@@ -117,12 +131,34 @@ def test_criar_ordem_falha_quando_veiculo_nao_existe(client, db_session):
     assert response.status_code == 404
 
 
-def test_obter_ordem_inexistente_retorna_404(client, db_session):
+def test_obter_ordem_inexistente_retorna_404(client, db_session, auth_headers):
     seed_status_ordem_servico(db_session)
 
-    response = client.get("/ordens-servico/999")
+    response = client.get("/ordens-servico/999", headers=auth_headers)
 
     assert response.status_code == 404
+
+
+def test_obter_ordem_sem_autenticacao_retorna_401(client, db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+
+    ordem_id = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+    ).json()["id"]
+
+    response = client.get(f"/ordens-servico/{ordem_id}")
+
+    assert response.status_code == 401
+
+
+def test_listar_ordens_sem_autenticacao_retorna_401(client, db_session):
+    seed_status_ordem_servico(db_session)
+
+    response = client.get("/ordens-servico")
+
+    assert response.status_code == 401
 
 
 def test_transicao_invalida_retorna_400(client, db_session):
@@ -155,6 +191,109 @@ def test_adicionar_item_falha_quando_servico_nao_existe(client, db_session):
     )
 
     assert response.status_code == 404
+
+
+def test_listar_ordens_de_servico_com_paginacao(client, db_session, auth_headers):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+
+    for _ in range(3):
+        client.post(
+            "/ordens-servico",
+            json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        )
+
+    resposta = client.get(
+        "/ordens-servico?page=1&page_size=2", headers=auth_headers
+    )
+
+    assert resposta.status_code == 200
+    body = resposta.json()
+    assert body["total"] == 3
+    assert body["page"] == 1
+    assert body["page_size"] == 2
+    assert body["total_paginas"] == 2
+    assert len(body["itens"]) == 2
+
+    resposta_pagina_2 = client.get(
+        "/ordens-servico?page=2&page_size=2", headers=auth_headers
+    )
+    assert len(resposta_pagina_2.json()["itens"]) == 1
+
+
+def test_listar_ordens_de_servico_filtrando_por_status(
+    client, db_session, auth_headers
+):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+
+    ordem_id = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+    ).json()["id"]
+    client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Troca de pneus"},
+    )
+
+    client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
+
+    resposta = client.get(
+        "/ordens-servico?status=Em diagnóstico", headers=auth_headers
+    )
+
+    assert resposta.status_code == 200
+    body = resposta.json()
+    assert body["total"] == 1
+    assert body["itens"][0]["id"] == ordem_id
+
+
+def test_listar_ordens_de_servico_filtrando_por_placa_e_cpf_cnpj(
+    client, db_session, auth_headers
+):
+    seed_status_ordem_servico(db_session)
+    usuario = criar_usuario(db_session, email="ana@example.com")
+    cliente = criar_cliente(
+        db_session, usuario.id, nome="Ana", cpf_cnpj="52998224725"
+    )
+    marca = criar_marca(db_session)
+    veiculo_alvo = criar_veiculo(
+        db_session, cliente.id, marca.id, placa="XYZ9A87"
+    )
+    outro_veiculo = _criar_veiculo(db_session)
+
+    ordem_alvo = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo_alvo.id), "descricao": "Revisão completa"},
+    ).json()["id"]
+    client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(outro_veiculo.id), "descricao": "Troca de pneus"},
+    )
+
+    resposta_placa = client.get(
+        "/ordens-servico?placa=xyz-9a87", headers=auth_headers
+    )
+    assert resposta_placa.json()["total"] == 1
+    assert resposta_placa.json()["itens"][0]["id"] == ordem_alvo
+
+    resposta_cpf = client.get(
+        "/ordens-servico?cpf_cnpj=529.982.247-25", headers=auth_headers
+    )
+    assert resposta_cpf.json()["total"] == 1
+    assert resposta_cpf.json()["itens"][0]["id"] == ordem_alvo
+
+
+def test_listar_ordens_de_servico_com_status_invalido_retorna_400(
+    client, db_session, auth_headers
+):
+    seed_status_ordem_servico(db_session)
+
+    resposta = client.get(
+        "/ordens-servico?status=Inexistente", headers=auth_headers
+    )
+
+    assert resposta.status_code == 400
 
 
 def test_operacoes_com_ordem_inexistente_retornam_404(client, db_session):

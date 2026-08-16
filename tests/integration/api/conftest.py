@@ -37,3 +37,26 @@ def client(db_session) -> Iterator[TestClient]:
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture()
+def auth_headers(client: TestClient) -> dict[str, str]:
+    """Registra e autentica um usuário, devolvendo o header Authorization."""
+
+    client.post(
+        "/users/register",
+        json={
+            "name": "Usuário Admin",
+            "email": "admin@example.com",
+            "password": "senha-super-secreta",
+        },
+    )
+
+    resposta = client.post(
+        "/users/login",
+        json={"email": "admin@example.com", "password": "senha-super-secreta"},
+    )
+
+    token = resposta.json()["access_token"]
+
+    return {"Authorization": f"Bearer {token}"}

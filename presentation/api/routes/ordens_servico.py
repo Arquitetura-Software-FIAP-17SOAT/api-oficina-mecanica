@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 
 from infrastructure.database.database import get_db
@@ -10,8 +10,21 @@ from application.commands.criar_ordem_servico import (
     CriarOrdemServicoUseCase,
     VeiculoNaoEncontradoError,
 )
+from application.queries.get_ordem_servico_detalhada import (
+    GetOrdemServicoDetalhadaUseCase,
+    ItemServicoDetalhado,
+    OrdemServicoDetalhada,
+)
+from application.queries.list_ordens_servico import (
+    ListOrdensServicoQuery,
+    ListOrdensServicoUseCase,
+    OrdensServicoPaginadas,
+)
+from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.dependencies import (
     get_criar_ordem_servico_use_case,
+    get_list_ordens_servico_use_case,
+    get_ordem_servico_detalhada_use_case,
 )
 
 router = APIRouter(
@@ -104,6 +117,72 @@ class StatusChangeResponse(BaseModel):
     message: str
 
 
+class ClienteResumoResponse(BaseModel):
+    """Dados do cliente dono do veículo atendido pela OS"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    nome: str
+    cpf_cnpj: Optional[str] = None
+    email: Optional[str] = None
+
+
+class VeiculoResumoResponse(BaseModel):
+    """Dados do veículo atendido pela OS"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    placa: str
+    modelo: str
+    marca_id: int
+    ano_fabricacao: Optional[int] = None
+
+
+class InsumoResumoResponse(BaseModel):
+    """Peça/insumo consumido por um serviço da OS"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    nome: str
+    estoque: int
+
+
+class ServicoItemResponse(BaseModel):
+    """Um serviço adicionado à OS, com as peças que ele consome"""
+
+    servico_id: str
+    nome: Optional[str] = None
+    quantidade: int
+    valor_unitario: float
+    valor_total: float
+    insumos: list[InsumoResumoResponse] = Field(default_factory=list)
+
+
+class OrdemServicoDetailResponse(BaseModel):
+    """Response detalhada de uma ordem de serviço"""
+
+    id: int
+    veiculo_id: str
+    descricao: str
+    status: str
+    orcamento: Optional[float]
+    observacoes: Optional[str]
+    cliente: Optional[ClienteResumoResponse]
+    veiculo: Optional[VeiculoResumoResponse]
+    itens: list[ServicoItemResponse]
+    valor_total_itens: float
+
+
+class OrdensServicoPaginadasResponse(BaseModel):
+    """Response paginada da listagem de ordens de serviço"""
+
+    itens: list[OrdemServicoResponse]
+    total: int
+    page: int
+    page_size: int
+    total_paginas: int
+
+
 # ==================== Endpoints ====================
 
 @router.post(
@@ -168,44 +247,117 @@ async def criar_ordem_servico(
 
 
 @router.get(
+    "",
+    response_model=OrdensServicoPaginadasResponse,
+    summary="Listar Ordens de Serviço",
+    description=(
+        "Lista as ordens de serviço com paginação, podendo ser filtradas por "
+        "status, CPF/CNPJ do cliente ou placa do veículo. "
+        "**Requer autenticação (Bearer token).**"
+    ),
+)
+async def listar_ordens_servico(
+    status_filtro: Optional[str] = Query(
+        None,
+        alias="status",
+        description="Filtra pelo status exato da OS (ex.: 'Em diagnóstico').",
+    ),
+    cpf_cnpj: Optional[str] = Query(
+        None, description="Filtra pelo CPF/CNPJ do cliente, com ou sem máscara."
+    ),
+    placa: Optional[str] = Query(
+        None, description="Filtra pela placa do veículo, com ou sem máscara."
+    ),
+    page: int = Query(1, ge=1, description="Número da página (a partir de 1)."),
+    page_size: int = Query(
+        10, ge=1, le=100, description="Quantidade de itens por página (máx. 100)."
+    ),
+    use_case: ListOrdensServicoUseCase = Depends(get_list_ordens_servico_use_case),
+    current_user: dict = Depends(get_current_user),
+):
+    """Lista ordens de serviço de forma paginada, com filtros opcionais."""
+    try:
+        resultado: OrdensServicoPaginadas = await use_case.execute(
+            ListOrdensServicoQuery(
+                status=status_filtro,
+                cpf_cnpj=cpf_cnpj,
+                placa=placa,
+                page=page,
+                page_size=page_size,
+            )
+        )
+
+        return OrdensServicoPaginadasResponse(
+            itens=[
+                OrdemServicoResponse(
+                    id=os.id,
+                    veiculo_id=os.veiculo_id,
+                    descricao=str(os.descricao),
+                    status=os.status.value,
+                    orcamento=os.orcamento,
+                    observacoes=os.observacoes,
+                    quantidade_servicos=len(os.itens),
+                )
+                for os in resultado.itens
+            ],
+            total=resultado.total,
+            page=resultado.page,
+            page_size=resultado.page_size,
+            total_paginas=resultado.total_paginas,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao listar ordens de serviço",
+        )
+
+
+@router.get(
     "/{ordem_id}",
-    response_model=OrdemServicoResponse,
+    response_model=OrdemServicoDetailResponse,
     summary="Obter Ordem de Serviço",
-    description="Retorna os dados de uma ordem de serviço específica",
+    description=(
+        "Retorna os dados completos de uma ordem de serviço: cliente, "
+        "veículo, serviços com suas peças/insumos, status e orçamento. "
+        "**Requer autenticação (Bearer token).**"
+    ),
 )
 async def obter_ordem_servico(
     ordem_id: int,
-    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
+    use_case: GetOrdemServicoDetalhadaUseCase = Depends(
+        get_ordem_servico_detalhada_use_case
+    ),
+    current_user: dict = Depends(get_current_user),
 ):
     """
-    Obtém os detalhes de uma ordem de serviço.
-    
+    Obtém os detalhes completos de uma ordem de serviço.
+
     Retorna:
-    - ID da ordem
-    - Informações do veículo
-    - Status atual
-    - Orçamento
-    - Observações
-    - Quantidade de serviços adicionados
+    - Dados do cliente e do veículo atendidos
+    - Status atual e orçamento
+    - Serviços adicionados, cada um com as peças/insumos que consome
+    - Valor total dos itens adicionados
     """
     try:
-        ordem_servico = await use_case.ordem_servico_repository.find_by_id(ordem_id)
+        detalhe: OrdemServicoDetalhada | None = await use_case.execute(ordem_id)
 
-        if not ordem_servico:
+        if detalhe is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Ordem de serviço {ordem_id} não encontrada",
             )
 
-        return OrdemServicoResponse(
-            id=ordem_servico.id,
-            veiculo_id=ordem_servico.veiculo_id,
-            descricao=str(ordem_servico.descricao),
-            status=ordem_servico.status.value,
-            orcamento=ordem_servico.orcamento,
-            observacoes=ordem_servico.observacoes,
-            quantidade_servicos=len(ordem_servico.itens),
-        )
+        return _para_detail_response(detalhe)
 
     except HTTPException:
         raise
@@ -215,6 +367,62 @@ async def obter_ordem_servico(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao obter ordem de serviço",
         )
+
+
+def _para_detail_response(
+    detalhe: OrdemServicoDetalhada,
+) -> OrdemServicoDetailResponse:
+    ordem_servico = detalhe.ordem_servico
+
+    return OrdemServicoDetailResponse(
+        id=ordem_servico.id,
+        veiculo_id=ordem_servico.veiculo_id,
+        descricao=str(ordem_servico.descricao),
+        status=ordem_servico.status.value,
+        orcamento=ordem_servico.orcamento,
+        observacoes=ordem_servico.observacoes,
+        cliente=(
+            ClienteResumoResponse(
+                id=detalhe.cliente.id,
+                nome=detalhe.cliente.nome,
+                cpf_cnpj=(
+                    str(detalhe.cliente.cpf_cnpj)
+                    if detalhe.cliente.cpf_cnpj
+                    else None
+                ),
+                email=str(detalhe.cliente.email) if detalhe.cliente.email else None,
+            )
+            if detalhe.cliente
+            else None
+        ),
+        veiculo=(
+            VeiculoResumoResponse(
+                id=detalhe.veiculo.id,
+                placa=str(detalhe.veiculo.placa),
+                modelo=detalhe.veiculo.modelo,
+                marca_id=detalhe.veiculo.marca_id,
+                ano_fabricacao=detalhe.veiculo.ano_fabricacao,
+            )
+            if detalhe.veiculo
+            else None
+        ),
+        itens=[_para_item_response(item) for item in detalhe.itens],
+        valor_total_itens=detalhe.valor_total_itens,
+    )
+
+
+def _para_item_response(item: ItemServicoDetalhado) -> ServicoItemResponse:
+    return ServicoItemResponse(
+        servico_id=item.servico_id,
+        nome=item.servico.nome if item.servico else None,
+        quantidade=item.quantidade,
+        valor_unitario=item.valor_unitario,
+        valor_total=item.valor_total,
+        insumos=[
+            InsumoResumoResponse(id=insumo.id, nome=insumo.nome, estoque=insumo.estoque)
+            for insumo in item.insumos
+        ],
+    )
 
 
 @router.post(

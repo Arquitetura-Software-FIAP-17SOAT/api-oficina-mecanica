@@ -39,3 +39,8 @@ class InsumoRepository(ABC):
     @abstractmethod
     async def has_vinculos(self, insumo_id: int) -> bool:
         pass
+
+    @abstractmethod
+    async def list_by_servico_id(self, servico_id: int) -> list[Insumo]:
+        """Lista os insumos (peças/materiais) que compõem um serviço."""
+        pass
