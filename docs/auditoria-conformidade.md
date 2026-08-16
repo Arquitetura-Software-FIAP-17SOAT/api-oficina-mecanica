@@ -4,9 +4,12 @@ Revisão do que está **de fato implementado** no repositório contra as regras 
 enunciado (Tech Challenge FIAP SOAT) — não do que está planejado. Cada item traz o veredito, a
 evidência no código e, quando há lacuna, uma correção concreta.
 
-- **Branch analisada:** `feature/os-status-change`
-- **Testes:** 485 · **Cobertura:** 97%
-- **Placar:** 9 conforme · 2 parcial · 4 lacuna · 2 crítico
+- **Branch analisada:** `feature/api-cliente`
+- **Testes:** 523 · **Cobertura:** 97%
+- **Placar:** 17 conforme · 1 parcial · 2 lacuna · 1 crítico
+- **Corrigidos desde a primeira rodada:** JWT nas APIs administrativas (crítico), orçamento gerado
+  automaticamente (lacuna) e consulta do cliente sem login administrativo (parcial) — todos
+  marcados como ✅, com o achado original preservado para rastreabilidade.
 
 > Legenda: ✅ Conforme · 🟡 Parcial · 🟠 Lacuna · 🔴 Crítico
 
@@ -78,38 +81,69 @@ No use case, chame `insumo.remover_estoque(quantidade)` (já existe e já valida
 antes de persistir — reaproveita 100% da regra de estoque que já existe em
 `domain/entities/insumo.py`.
 
-### 🟠 Orçamento gerado automaticamente a partir de serviços e peças — Lacuna
-`orcamento` nunca é calculado — é sempre um número cru enviado pelo chamador da API, tanto na
-criação quanto em `enviar-aprovacao` (campo obrigatório no request). Nenhum dos pontos onde
-`orcamento` é atribuído soma `item["valor"] * item["quantidade"]`. Isso contraria literalmente o
-enunciado ("orçamento gerado automaticamente com base nos serviços e peças") e abre a porta para o
-cliente aprovar um valor diferente do que a OS realmente contém.
+### ✅ Orçamento gerado automaticamente a partir de serviços e peças — Corrigido
+> **Achado original (Lacuna):** `orcamento` nunca era calculado — era sempre um número cru enviado
+> pelo chamador da API, tanto na criação quanto em `enviar-aprovacao` (campo obrigatório no
+> request). Nenhum dos pontos onde `orcamento` era atribuído somava
+> `item["valor"] * item["quantidade"]`, contrariando o enunciado e permitindo que o cliente
+> aprovasse um valor diferente do que a OS realmente continha.
 
-- `domain/entities/ordem_servico.py:28`
-- `domain/entities/ordem_servico.py:93`
-- `application/commands/enviar_ordem_servico_para_aprovacao.py:35`
-
-**Sugestão de correção** — adicionar uma propriedade calculada na entidade e usá-la como *default*
-em `enviar_para_aprovacao`, mantendo o parâmetro manual como override explícito (útil para
-descontos) em vez de removê-lo:
+A entidade passou a expor `orcamento_calculado`, que soma `valor × quantidade` de cada serviço da
+OS (arredondado a 2 casas). `enviar_para_aprovacao` agora recebe `orcamento` **opcional**: quando
+omitido, o valor é gerado automaticamente a partir dos itens; quando informado, prevalece — é o
+que permite aplicar desconto ou acréscimo sobre o total.
 
 ```python
 # domain/entities/ordem_servico.py
 @property
 def orcamento_calculado(self) -> float:
-    """Soma o valor dos itens já adicionados à OS."""
-    return sum(item["valor"] * item["quantidade"] for item in self.itens)
+    total = sum(item["valor"] * item["quantidade"] for item in self.itens)
+    return round(total, 2)
 
-def enviar_para_aprovacao(self, orcamento: float | None = None, observacoes: str = None):
+def enviar_para_aprovacao(self, orcamento: float = None, observacoes: str = None):
     self._validar_transicao(StatusOrdemServico.AGUARDANDO_APROVACAO)
-    orcamento_final = orcamento if orcamento is not None else self.orcamento_calculado
-    if orcamento_final <= 0:
-        raise ValueError("Orçamento deve ser um valor positivo")
-    # ... resto do método permanece igual, usando orcamento_final
+
+    if orcamento is None:
+        if not self.itens:
+            raise ValueError(
+                "Não é possível gerar o orçamento automaticamente: a ordem "
+                "de serviço não possui serviços adicionados"
+            )
+        orcamento = self.orcamento_calculado
+
+    self.orcamento = self._validar_orcamento(orcamento)
+    ...
 ```
 
-E no `EnviarOrdemServicoParaAprovacaoCommand`, tornar `orcamento` opcional
-(`float | None = None`) para que o caso de uso já sirva o fluxo 100% automático.
+Junto com a correção principal, dois problemas adjacentes foram fechados:
+
+- **Orçamento negativo aceito na criação.** `float(orcamento) if orcamento else None` aceitava
+  `-500` sem reclamar, e `aprovar_e_iniciar_execucao` (`if not self.orcamento`) deixava passar,
+  porque um negativo é *truthy*. Uma OS podia ser executada com orçamento negativo. Agora um
+  `_validar_orcamento` compartilhado valida tanto o valor calculado quanto o manual, em ambos os
+  caminhos.
+- **Regra duplicada na camada de query.** `OrdemServicoDetalhada.valor_total_itens` reimplementava
+  exatamente a mesma soma. Passou a delegar a `ordem_servico.orcamento_calculado` — a regra vive
+  só no domínio.
+
+O campo `orcamento` do request virou opcional e a resposta de `enviar-aprovacao` devolve o valor
+orçado na mensagem, para o atendente conferir o que foi enviado ao cliente.
+
+> **Sobre "e peças":** hoje as peças que um serviço consome já estão precificadas dentro do
+> `valor` do próprio serviço (a receita em `ServicoInsumoModel`), então o total calculado as
+> cobre. Peças avulsas, fora da receita, dependem da lacuna "incluir peças e insumos na OS" acima
+> — quando ela for fechada, entram nessa mesma soma sem mudar a regra.
+
+**Arquivos:** `domain/entities/ordem_servico.py`,
+`application/commands/enviar_ordem_servico_para_aprovacao.py`,
+`application/queries/get_ordem_servico_detalhada.py`,
+`presentation/api/routes/ordens_servico.py`
+
+**Ponto em aberto para o time decidir:** `adicionar_item` / `remover_item` não têm trava de status,
+então os itens podem mudar depois que o orçamento já foi enviado, deixando `orcamento` (aprovado)
+diferente de `orcamento_calculado` (atual). O detalhe da OS agora mostra os dois valores lado a
+lado, mas não há bloqueio nem re-aprovação automática — vale definir se alterar itens após o envio
+deve forçar a OS de volta para 'Em diagnóstico'.
 
 ### ✅ Envio do orçamento para aprovação do cliente
 Use case dedicado (`EnviarOrdemServicoParaAprovacaoUseCase`) aplica a transição 'Em diagnóstico' →
@@ -137,34 +171,43 @@ monta o comando, o caso de uso decide e persiste.
 
 - `application/commands/*_ordem_servico*.py`
 
-### 🟡 Cliente consulta o andamento via API — Parcial
-O enunciado trata "cliente acompanha via app" e "APIs administrativas exigem JWT" como duas coisas
-separadas — sugerindo que a consulta do cliente não deveria depender do mesmo login
-administrativo. Hoje só existe um caminho: `GET /ordens-servico/{id}`, protegido pelo
-`get_current_user` administrativo. Um cliente final não tem como consultar sua própria OS sem uma
-conta de funcionário — não há token de cliente, nem endpoint público/escopado por CPF+placa.
+### ✅ Cliente consulta o andamento via API — Corrigido
+> **Achado original (Parcial):** o enunciado trata "cliente acompanha via app" e "APIs
+> administrativas exigem JWT" como duas coisas separadas — sugerindo que a consulta do cliente não
+> deveria depender do mesmo login administrativo. Só existia um caminho:
+> `GET /ordens-servico/{id}`, protegido pelo `get_current_user` administrativo. Um cliente final
+> não tinha como consultar sua própria OS sem uma conta de funcionário.
 
-- `presentation/api/routes/ordens_servico.py:365-372`
+Novo endpoint `POST /consulta/ordens-servico`, sem token. A autorização vem da posse de dois dados
+que só o dono reúne — o número da OS e o CPF/CNPJ cadastrado nela — e não de uma sessão de
+funcionário. Aceita o documento com ou sem máscara.
 
-**Sugestão de correção** — não duplicar a rota administrativa; expor uma consulta pública mínima,
-sem dados sensíveis de outros clientes, autenticada pela posse de dados que só o dono da OS teria
-(documento + placa), não por sessão administrativa:
+Três decisões de projeto por trás disso:
 
-```python
-@router.get("/consulta", response_model=OrdemServicoResponse)
-async def consultar_publica(
-    numero_os: int,
-    cpf_cnpj: str,
-    use_case: GetOrdemServicoDetalhadaUseCase = Depends(get_ordem_servico_detalhada_use_case),
-):
-    """Consulta pública: exige o número da OS + o CPF/CNPJ do cliente dono."""
-    detalhe = await use_case.execute(numero_os)
-    if detalhe is None or detalhe.cliente is None:
-        raise HTTPException(404, "Ordem de serviço não encontrada")
-    if re.sub(r"\D", "", cpf_cnpj) != str(detalhe.cliente.cpf_cnpj):
-        raise HTTPException(404, "Ordem de serviço não encontrada")  # não revela 403
-    return resposta_resumida(detalhe)  # menos dados que a rota admin
-```
+- **Router e módulo próprios.** `ordens_servico.py` declara `Depends(get_current_user)` no nível do
+  `APIRouter`, e o FastAPI não permite que um endpoint específico abra mão de uma dependência de
+  router — uma rota pública ali seria impossível. A separação ainda deixa a fronteira de segurança
+  explícita e dá ao endpoint uma tag própria no Swagger.
+- **POST, não GET.** O CPF/CNPJ é dado pessoal: em query string acabaria em log de acesso,
+  histórico do navegador e cabeçalho `Referer`. No corpo, não. Custa a semântica REST e vale a
+  pena (LGPD).
+- **404 idêntico para documento errado e OS inexistente.** Se as duas respostas diferissem, a rota
+  viraria um oráculo para descobrir quais OS existem e a quem pertencem. Há teste garantindo que
+  as respostas são idênticas.
+
+A resposta é deliberadamente mais estreita que a administrativa: sem identificadores internos, sem
+e-mail do cliente e sem `observacoes` — este último é texto livre preenchido por funcionários, que
+podem não contar com ele sendo visível ao cliente. Traz status com descrição legível, serviços com
+quantidade e valor, orçamento, total, veículo (placa/modelo) e um `aguardando_sua_aprovacao`.
+
+**Arquivos:** `application/queries/consultar_ordem_servico_publica.py`,
+`presentation/api/routes/consulta_publica.py`, `presentation/dependencies/dependencies.py`,
+`main.py`
+
+**Ponto de segurança em aberto:** não há *rate limiting*. Sabendo um número de OS, é possível
+tentar documentos em força bruta. Na prática ~10⁹ CPFs válidos tornam isso inviável sem automação
+pesada, mas um endpoint público sem limite é exposição real — fechar direito pede Redis ou
+equivalente.
 
 ---
 
@@ -232,23 +275,19 @@ endpoint administrativo, não um dado de cliente final.
 > "Autenticação JWT nas APIs administrativas; validação de CPF/CNPJ e placa; testes
 > automatizados."
 
-### 🔴 JWT nas APIs administrativas — Crítico
-`get_current_user` existe e funciona — mas está preso em só **2 de ~34 endpoints** em toda a API
-(`GET /ordens-servico` e `GET /ordens-servico/{id}`). Todo o resto é acessível sem token:
-criar/editar/excluir clientes, veículos, serviços; criar/editar/excluir peças *e movimentar
-estoque* (entrada/saída/ajuste); criar uma OS; e as 8 transições de status (incluindo aprovar
-orçamento e entregar o veículo). Isso é o inverso do requisito — as leituras estão protegidas e as
-escritas administrativas, não.
+### ✅ JWT nas APIs administrativas — Corrigido
+> **Achado original (Crítico):** `get_current_user` existia e funcionava, mas estava preso em só
+> **2 de ~34 endpoints** (`GET /ordens-servico` e `GET /ordens-servico/{id}`). Todo o resto era
+> acessível sem token: criar/editar/excluir clientes, veículos, serviços; criar/editar/excluir
+> peças *e movimentar estoque*; criar uma OS; e as 8 transições de status (incluindo aprovar
+> orçamento e entregar o veículo). Era o inverso do requisito — as leituras protegidas e as
+> escritas administrativas, não.
 
-- `presentation/api/routes/{clientes,insumos,servicos,veiculos}.py` — 0 endpoints protegidos
-- `presentation/api/routes/ordens_servico.py` — 2/11 protegidos
-
-**Sugestão de correção** — em vez de colar `Depends(get_current_user)` em cada função (fácil de
-esquecer em endpoints novos), proteger no nível do `APIRouter` — um único ponto de verdade por
-domínio:
+A proteção passou para o nível do `APIRouter`, um único ponto de verdade por domínio, de modo que
+um endpoint novo não nasce desprotegido por esquecimento:
 
 ```python
-# presentation/api/routes/clientes.py
+# presentation/api/routes/clientes.py (mesmo padrão em insumos, servicos, veiculos, ordens_servico)
 router = APIRouter(
     prefix="/clientes",
     tags=["Clientes"],
@@ -256,9 +295,13 @@ router = APIRouter(
 )
 ```
 
-Repetir para `insumos.py`, `servicos.py`, `veiculos.py`. Em `ordens_servico.py`, mover a proteção
-do endpoint individual para o router também cobre a criação e as 8 transições de status de uma vez
-— reduzindo o diff e eliminando a chance de um novo endpoint nascer desprotegido por esquecimento.
+Verificado via schema OpenAPI: dos 34 endpoints, os únicos sem `security` são
+`POST /users/register` e `POST /users/login` — públicos por definição, já que são o caminho para
+obter o token. Os testes de integração ganharam um `unauthenticated_client` e um teste de 401 por
+domínio, para que a regressão seja detectada e não apenas presumida.
+
+**Arquivos:** `presentation/api/routes/{clientes,insumos,servicos,veiculos,ordens_servico}.py`,
+`tests/integration/api/conftest.py`
 
 ### 🔴 Chave JWT: variável de ambiente inoperante — Crítico
 `.env.example` declara `JWT_SECRET_KEY` / `JWT_ALGORITHM` / `JWT_EXPIRE_MINUTES`, mas `Settings`
@@ -323,10 +366,10 @@ incluindo o esquema de segurança OAuth2 nos dois endpoints protegidos.
 ### ✅ Dockerfile + docker-compose.yml
 Ambos presentes na raiz; README documenta `docker compose up --build`.
 
-### ✅ README com configuração local
+### 🟡 README com configuração local — Parcial
 Cobre pré-requisitos, subida via Docker, logs, testes e cobertura. Não justifica explicitamente a
 escolha do PostgreSQL — item pedido no enunciado ("a escolha do banco é livre, mas é necessário
-justificá-la") e hoje ausente do texto.
+justificá-la") e hoje ausente do texto. Correção é um parágrafo no README.
 
 - `README.md`
 
@@ -334,12 +377,23 @@ justificá-la") e hoje ausente do texto.
 
 ## Conclusão
 
-Dois achados críticos concentram o risco, ambos no domínio **D** e ambos de baixo esforço para
-corrigir:
+**Já corrigido nesta rodada:**
 
-1. Superfície administrativa quase inteira sem JWT (2 de ~34 endpoints protegidos).
-2. Chave JWT hardcoded inoperante — a variável de ambiente documentada não tem efeito algum.
+1. ✅ Superfície administrativa sem JWT — proteção movida para o nível do `APIRouter`; só
+   `register` e `login` seguem públicos.
+2. ✅ Orçamento automático — `orcamento_calculado` na entidade, com o valor manual virando
+   override opcional para desconto/acréscimo.
+3. ✅ Consulta do cliente — `POST /consulta/ordens-servico`, autenticado pela posse do número da
+   OS + CPF/CNPJ, em router próprio e com resposta reduzida.
 
-As quatro lacunas funcionais (insumo direto na OS, orçamento automático, tempo médio de execução,
-consulta pública do cliente) afetam requisitos explícitos do enunciado e valem a pena entrar no
-próximo ciclo antes da entrega da Fase 1.
+**Aberto, em ordem de prioridade:**
+
+1. 🔴 **Chave JWT hardcoded inoperante** — o único crítico restante e o de menor esforço:
+   `JWT_SECRET_KEY` no `.env` não tem efeito nenhum, então a aplicação usa em qualquer ambiente o
+   segredo versionado no repositório. Enquanto isso não for corrigido, qualquer pessoa com acesso
+   ao código forja um token administrativo válido — e a proteção de JWT recém-adicionada não vale
+   muito. Entra direto no relatório de vulnerabilidades pedido no enunciado.
+2. 🟠 Peças/insumos avulsos na OS, com baixa de estoque.
+3. 🟠 Tempo médio de execução (o histórico de status já tem os timestamps necessários).
+4. 🟡 Justificativa da escolha do banco no README.
+5. *Rate limiting* na consulta pública do cliente (ver seção B).
