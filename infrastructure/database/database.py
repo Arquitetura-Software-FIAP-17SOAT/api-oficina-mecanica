@@ -50,6 +50,7 @@ def create_tables() -> None:
         ServicoInsumoModel,
         OrdemServicoModel,
         OrdemServicoServicoModel,
+        OrdemServicoInsumoModel,
         StatusOrdemServicoModel,
         HistoricoOrdemServicoModel,
     )

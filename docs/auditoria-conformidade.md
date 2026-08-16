@@ -4,12 +4,13 @@ Revisão do que está **de fato implementado** no repositório contra as regras 
 enunciado (Tech Challenge FIAP SOAT) — não do que está planejado. Cada item traz o veredito, a
 evidência no código e, quando há lacuna, uma correção concreta.
 
-- **Branch analisada:** `feature/api-cliente`
-- **Testes:** 523 · **Cobertura:** 97%
-- **Placar:** 17 conforme · 1 parcial · 2 lacuna · 1 crítico
+- **Branch analisada:** `feature/pecas-e-insumos-os`
+- **Testes:** 552 · **Cobertura:** 97%
+- **Placar:** 18 conforme · 1 parcial · 1 lacuna · 1 crítico
 - **Corrigidos desde a primeira rodada:** JWT nas APIs administrativas (crítico), orçamento gerado
-  automaticamente (lacuna) e consulta do cliente sem login administrativo (parcial) — todos
-  marcados como ✅, com o achado original preservado para rastreabilidade.
+  automaticamente (lacuna), consulta do cliente sem login administrativo (parcial) e peças/insumos
+  avulsos na OS (lacuna) — todos marcados como ✅, com o achado original preservado para
+  rastreabilidade.
 
 > Legenda: ✅ Conforme · 🟡 Parcial · 🟠 Lacuna · 🔴 Crítico
 
@@ -39,47 +40,82 @@ negativo. Persistido em `ordem_servico_servicos`.
 
 - `domain/entities/ordem_servico.py:42-71`
 
-### 🟠 Possibilidade de incluir peças e insumos na OS — Lacuna
-Não existe caminho para anexar um insumo diretamente a uma OS. O único vínculo é transitivo — a
-"receita" fixa de um serviço (`ServicoInsumoModel`), exibida como somente-leitura no detalhe da OS.
-Não há coluna `insumo_id` em `ordem_servico_servicos`, nem endpoint, nem baixa de estoque
-associada a uma OS específica. Um mecânico não consegue registrar "usei 2 unidades deste filtro
-nesta ordem" fora da receita pré-cadastrada do serviço.
+### ✅ Possibilidade de incluir peças e insumos na OS — Corrigido
+> **Achado original (Lacuna):** não existia caminho para anexar um insumo diretamente a uma OS. O
+> único vínculo era transitivo — a "receita" fixa de um serviço (`ServicoInsumoModel`), exibida
+> como somente-leitura no detalhe da OS. Não havia coluna `insumo_id` em `ordem_servico_servicos`,
+> nem endpoint, nem baixa de estoque associada a uma OS específica. Um mecânico não conseguia
+> registrar "usei 2 unidades deste filtro nesta ordem" fora da receita pré-cadastrada do serviço.
 
-- `infrastructure/database/models.py`
-- `presentation/api/routes/ordens_servico.py:451-453` (somente leitura)
-
-**Sugestão de correção** — nova tabela de junção `ordem_servico_insumos` (mesmo padrão de
-`ordem_servico_servicos`), um método de domínio que reaproveita as mesmas validações de
-`adicionar_item`, e o use case chamando `InsumoRepository` para debitar o estoque no mesmo commit.
-
-```python
-# infrastructure/database/models.py
-class OrdemServicoInsumoModel(Base):
-    __tablename__ = "ordem_servico_insumos"
-
-    ordem_servico_id = Column(Integer, ForeignKey("ordens_servico.id"), primary_key=True)
-    insumo_id = Column(Integer, ForeignKey("insumos.id"), primary_key=True)
-    quantidade = Column(Integer, nullable=False)
-    valor_unitario = Column(Numeric(10, 2), nullable=False)
-```
+Implementado exatamente como a sugestão original propunha: nova tabela de junção
+`ordem_servico_insumos` (mesmo padrão de `ordem_servico_servicos`), métodos de domínio
+`adicionar_insumo`/`remover_insumo` que espelham `adicionar_item`/`remover_item`, e dois novos
+casos de uso — `AdicionarInsumoOrdemServicoUseCase` e `RemoverInsumoOrdemServicoUseCase` — que
+chamam `InsumoRepository` para debitar/estornar o estoque, reaproveitando 100% a regra de
+`Insumo.remover_estoque` (a mesma usada pelo CRUD de insumos, que já valida saldo insuficiente).
 
 ```python
-# domain/entities/ordem_servico.py — novo método, espelha adicionar_item
+# domain/entities/ordem_servico.py
 def adicionar_insumo(self, insumo_id: str, valor: float, quantidade: int = 1):
     if not insumo_id:
         raise ValueError("ID do insumo é obrigatório")
     if quantidade <= 0:
         raise ValueError("Quantidade deve ser maior que zero")
-    self.insumos_utilizados.append({
-        "insumo_id": insumo_id, "valor": float(valor), "quantidade": quantidade,
-    })
+    if valor < 0:
+        raise ValueError("Valor não pode ser negativo")
+    if any(item["insumo_id"] == insumo_id for item in self.insumos_utilizados):
+        raise ValueError("Este insumo já foi adicionado à ordem de serviço")
+    self.insumos_utilizados.append({...})
     self._atualizar_timestamp()
+
+def remover_insumo(self, insumo_id: str) -> int:
+    """Devolve a quantidade removida, para o caso de uso estornar o estoque."""
 ```
 
-No use case, chame `insumo.remover_estoque(quantidade)` (já existe e já valida saldo insuficiente)
-antes de persistir — reaproveita 100% da regra de estoque que já existe em
-`domain/entities/insumo.py`.
+```python
+# application/commands/adicionar_insumo_ordem_servico.py
+async def execute(self, command):
+    ordem_servico = await self.ordem_servico_repository.find_by_id(command.ordem_servico_id)
+    if ordem_servico is None:
+        return None
+
+    insumo = await self.insumo_repository.find_by_id(command.insumo_id)
+    if insumo is None:
+        raise InsumoNaoEncontradoError(f"Insumo {command.insumo_id} não encontrado")
+
+    insumo.remover_estoque(command.quantidade)  # valida saldo insuficiente
+    ordem_servico.adicionar_insumo(
+        insumo_id=str(command.insumo_id),
+        valor=float(insumo.preco_unitario.value) if insumo.preco_unitario else 0.0,
+        quantidade=command.quantidade,
+    )
+
+    await self.insumo_repository.update(insumo)
+    return await self.ordem_servico_repository.save(ordem_servico)
+```
+
+Dois endpoints novos: `POST /ordens-servico/{id}/adicionar-insumo` e
+`POST /ordens-servico/{id}/remover-insumo` — este último estorna a quantidade ao estoque, para que
+remover um insumo por engano não deixe o saldo permanentemente a menos. `OrcamentoCalculado` (a
+correção anterior) passou a somar também os insumos avulsos, então o orçamento automático já
+reflete "serviços e peças", como o enunciado original pedia. O detalhe da OS
+(`GET /ordens-servico/{id}`) ganhou um campo `insumos_utilizados`, distinto de
+`itens[].insumos` (que continua mostrando a composição fixa de cada serviço).
+
+**Ponto que ficou fora do escopo, por decisão consciente:** não há uma transação única cobrindo a
+baixa de estoque e a persistência da OS — são dois commits sequenciais na mesma sessão. Se o
+segundo falhar depois do primeiro ter sucesso, o estoque fica debitado sem o vínculo na OS
+registrado. Nenhum outro fluxo do sistema usa transação explícita entre agregados (o próprio
+`criar_ordem_servico.py` já opera assim), então mantive a mesma prática em vez de introduzir um
+padrão novo isolado — mas é uma inconsistência real sob falha parcial, e vale endereçar se o time
+decidir adotar `db.begin()` explícito de forma mais ampla.
+
+**Arquivos:** `domain/entities/ordem_servico.py`, `infrastructure/database/models.py`,
+`infrastructure/database/repositories/ordem_servico_repository_impl.py`,
+`application/commands/adicionar_insumo_ordem_servico.py`,
+`application/commands/remover_insumo_ordem_servico.py`,
+`application/queries/get_ordem_servico_detalhada.py`,
+`presentation/api/routes/ordens_servico.py`
 
 ### ✅ Orçamento gerado automaticamente a partir de serviços e peças — Corrigido
 > **Achado original (Lacuna):** `orcamento` nunca era calculado — era sempre um número cru enviado
@@ -385,6 +421,8 @@ justificá-la") e hoje ausente do texto. Correção é um parágrafo no README.
    override opcional para desconto/acréscimo.
 3. ✅ Consulta do cliente — `POST /consulta/ordens-servico`, autenticado pela posse do número da
    OS + CPF/CNPJ, em router próprio e com resposta reduzida.
+4. ✅ Peças/insumos avulsos na OS — nova tabela de junção, métodos de domínio espelhando os de
+   serviço, e dois casos de uso que debitam/estornam o estoque via `Insumo.remover_estoque`.
 
 **Aberto, em ordem de prioridade:**
 
@@ -393,7 +431,8 @@ justificá-la") e hoje ausente do texto. Correção é um parágrafo no README.
    segredo versionado no repositório. Enquanto isso não for corrigido, qualquer pessoa com acesso
    ao código forja um token administrativo válido — e a proteção de JWT recém-adicionada não vale
    muito. Entra direto no relatório de vulnerabilidades pedido no enunciado.
-2. 🟠 Peças/insumos avulsos na OS, com baixa de estoque.
-3. 🟠 Tempo médio de execução (o histórico de status já tem os timestamps necessários).
-4. 🟡 Justificativa da escolha do banco no README.
-5. *Rate limiting* na consulta pública do cliente (ver seção B).
+2. 🟠 Tempo médio de execução (o histórico de status já tem os timestamps necessários).
+3. 🟡 Justificativa da escolha do banco no README.
+4. *Rate limiting* na consulta pública do cliente (ver seção B).
+5. A baixa de estoque e a persistência da OS não são atômicas na adição de insumo (dois commits
+   sequenciais) — ver nota na seção A.
