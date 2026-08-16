@@ -174,3 +174,60 @@ def test_estoque_baixo(estoque, quantidade_minima, esperado):
     insumo = criar_insumo(estoque=estoque, quantidade_minima=quantidade_minima)
 
     assert insumo.estoque_baixo is esperado
+
+
+def test_movimentacao_com_quantidade_nao_inteira_e_invalida():
+    """Testa que a movimentação de estoque exige um inteiro."""
+
+    insumo = criar_insumo()
+
+    with pytest.raises(ValueError, match="número inteiro"):
+        insumo.adicionar_estoque(1.5)
+
+
+def test_quantidade_nao_inteira_e_invalida():
+    """Testa que estoque/quantidade mínima exigem um inteiro."""
+
+    with pytest.raises(ValueError, match="número inteiro"):
+        criar_insumo(estoque=1.5)
+
+
+def test_change_nome():
+    """Testa a alteração do nome do insumo."""
+
+    insumo = criar_insumo()
+    insumo.change_nome("Óleo 5W40")
+
+    assert insumo.nome == "Óleo 5W40"
+
+
+def test_change_descricao():
+    """Testa a alteração da descrição do insumo."""
+
+    insumo = criar_insumo()
+    insumo.change_descricao("  Nova descrição  ")
+    assert insumo.descricao == "Nova descrição"
+
+    insumo.change_descricao(None)
+    assert insumo.descricao is None
+
+
+def test_change_preco_unitario():
+    """Testa a alteração do preço unitário do insumo."""
+
+    insumo = criar_insumo()
+    insumo.change_preco_unitario(Decimal("99.90"))
+
+    assert insumo.preco_unitario == Dinheiro("99.90")
+
+    insumo.change_preco_unitario(None)
+    assert insumo.preco_unitario is None
+
+
+def test_change_quantidade_minima():
+    """Testa a alteração da quantidade mínima do insumo."""
+
+    insumo = criar_insumo()
+    insumo.change_quantidade_minima(7)
+
+    assert insumo.quantidade_minima == 7

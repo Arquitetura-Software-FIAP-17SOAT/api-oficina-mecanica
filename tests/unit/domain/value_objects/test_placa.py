@@ -96,3 +96,10 @@ def test_str_devolve_a_placa():
     """Testa a conversão para texto, usada na persistência."""
 
     assert str(Placa("abc-1234")) == "ABC1234"
+
+
+def test_aceita_outra_instancia_de_placa():
+    """Testa que uma Placa já validada é aceita diretamente."""
+
+    original = Placa("ABC1234")
+    assert Placa(original) == original

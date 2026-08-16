@@ -114,3 +114,32 @@ def test_change_valor_revalida():
         servico.change_valor(Decimal("-1"))
 
     assert servico.valor == Dinheiro("120.00")
+
+
+def test_change_nome():
+    """Testa a alteração do nome do serviço."""
+
+    servico = criar_servico()
+    servico.change_nome("Alinhamento e balanceamento")
+
+    assert servico.nome == "Alinhamento e balanceamento"
+
+
+def test_change_descricao():
+    """Testa a alteração da descrição do serviço."""
+
+    servico = criar_servico()
+    servico.change_descricao("  Detalhes  ")
+    assert servico.descricao == "Detalhes"
+
+    servico.change_descricao(None)
+    assert servico.descricao is None
+
+
+def test_change_tempo_estimado():
+    """Testa a alteração do tempo estimado do serviço."""
+
+    servico = criar_servico()
+    servico.change_tempo_estimado("2h")
+
+    assert servico.tempo_estimado == "2h"

@@ -13,22 +13,23 @@ from domain.repositories.ordem_servico_repository import OrdemServicoRepository
 class TestCriarOrdemServicoUseCase:
     """Testes para o caso de uso de criar Ordem de Serviço"""
 
-    def test_criar_ordem_servico_com_veiculo_valido(self):
-        """Deve criar ordem quando veículo existe"""
+    @pytest.mark.asyncio
+    async def test_criar_ordem_servico_com_veiculo_valido(self):
+        """Deve criar e persistir a ordem quando o veículo existe"""
         # Arrange
         mock_db = Mock(spec=Session)
         mock_repository = AsyncMock(spec=OrdemServicoRepository)
-        
+
         # Mock do veículo existente
         mock_veiculo = Mock()
         mock_veiculo.id = 1
         mock_db.query().filter().first.return_value = mock_veiculo
-        
+
         use_case = CriarOrdemServicoUseCase(
             ordem_servico_repository=mock_repository,
             db=mock_db,
         )
-        
+
         command = CriarOrdemServicoCommand(
             veiculo_id="1",
             descricao="Troca de óleo",
@@ -36,11 +37,15 @@ class TestCriarOrdemServicoUseCase:
             observacoes="Padrão",
         )
 
-        # Act & Assert - Deve executar sem lançar exceção
-        # Note: Teste básico apenas verifica se a query é feita
-        mock_db.query().filter().first.return_value = mock_veiculo
-        
-        assert mock_db.query().filter().first.return_value is not None
+        # Act
+        ordem_servico = await use_case.execute(command)
+
+        # Assert
+        assert ordem_servico.veiculo_id == "1"
+        assert str(ordem_servico.descricao) == "Troca de óleo"
+        assert ordem_servico.orcamento == 150.00
+        assert ordem_servico.observacoes == "Padrão"
+        mock_repository.save.assert_awaited_once_with(ordem_servico)
 
     def test_falhar_ao_criar_ordem_com_veiculo_inexistente(self):
         """Deve lançar exceção quando veículo não existe"""

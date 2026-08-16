@@ -141,3 +141,38 @@ def test_formatacao_brasileira(entrada, esperado):
     """Testa a máscara de exibição em reais."""
 
     assert Dinheiro(entrada).formatado() == esperado
+
+
+def test_aceita_outra_instancia_de_dinheiro():
+    """Testa que um Dinheiro já validado é aceito diretamente."""
+
+    original = Dinheiro("10.00")
+    assert Dinheiro(original) == original
+
+
+def test_soma_dois_dinheiros():
+    """Testa a soma entre dois valores monetários."""
+
+    assert Dinheiro("10.00") + Dinheiro("5.50") == Dinheiro("15.50")
+
+
+def test_subtracao_entre_dinheiros():
+    """Testa a subtração entre dois valores monetários."""
+
+    assert Dinheiro("10.00") - Dinheiro("5.50") == Dinheiro("4.50")
+
+
+def test_multiplicacao_por_quantidade():
+    """Testa a multiplicação de um valor monetário por uma quantidade."""
+
+    assert Dinheiro("10.00") * 3 == Dinheiro("30.00")
+    assert 3 * Dinheiro("10.00") == Dinheiro("30.00")
+
+
+def test_soma_com_tipo_incompativel_retorna_not_implemented():
+    """Testa que operações com tipos incompatíveis não são suportadas."""
+
+    assert Dinheiro("10.00").__add__(1) is NotImplemented
+    assert Dinheiro("10.00").__sub__(1) is NotImplemented
+    assert Dinheiro("10.00").__mul__("x") is NotImplemented
+    assert Dinheiro("10.00").__mul__(True) is NotImplemented

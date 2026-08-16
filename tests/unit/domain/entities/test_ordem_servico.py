@@ -128,6 +128,11 @@ class TestAdicionarRemoverItens:
         with pytest.raises(ValueError, match="não encontrado"):
             ordem_servico.remover_item("servico-inexistente")
 
+    def test_falhar_ao_adicionar_item_sem_servico_id(self, ordem_servico):
+        """Não deve permitir adicionar item sem o id do serviço"""
+        with pytest.raises(ValueError, match="ID do serviço é obrigatório"):
+            ordem_servico.adicionar_item("", 100.00)
+
 
 class TestTransicaoDeStatus:
     """Testes para transições de status da OS"""
@@ -227,6 +232,57 @@ class TestTransicaoDeStatus:
 
         assert ordem_servico.status == StatusOrdemServico.RECEBIDA
         assert len(ordem_servico.historico_status) == 4
+
+    def test_enviar_para_aprovacao_com_observacoes(self, ordem_servico):
+        """Deve atualizar as observações ao enviar para aprovação"""
+        ordem_servico.iniciar_diagnostico()
+        ordem_servico.enviar_para_aprovacao(
+            orcamento=1000.00, observacoes="Aguardando peças"
+        )
+
+        assert ordem_servico.observacoes == "Aguardando peças"
+
+    def test_finalizar_com_observacoes(self, ordem_servico):
+        """Deve atualizar as observações ao finalizar"""
+        ordem_servico.iniciar_diagnostico()
+        ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
+        ordem_servico.adicionar_item("servico-1", 500.00)
+        ordem_servico.aprovar_e_iniciar_execucao()
+
+        ordem_servico.finalizar("Tudo concluído")
+
+        assert ordem_servico.observacoes == "Tudo concluído"
+
+    def test_entregar_com_observacoes(self, ordem_servico):
+        """Deve atualizar as observações ao entregar"""
+        ordem_servico.iniciar_diagnostico()
+        ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
+        ordem_servico.adicionar_item("servico-1", 500.00)
+        ordem_servico.aprovar_e_iniciar_execucao()
+        ordem_servico.finalizar()
+
+        ordem_servico.entregar("Cliente satisfeito")
+
+        assert ordem_servico.observacoes == "Cliente satisfeito"
+
+    def test_falhar_ao_retornar_para_diagnostico_de_status_invalido(
+        self, ordem_servico
+    ):
+        """Não deve permitir retornar para diagnóstico fora de aguardando aprovação"""
+        with pytest.raises(ValueError, match="Não é possível retornar"):
+            ordem_servico.retornar_para_diagnostico()
+
+    def test_falhar_ao_retornar_para_recebida_de_status_invalido(
+        self, ordem_servico
+    ):
+        """Não deve permitir retornar para recebida a partir de estado final"""
+        ordem_servico.iniciar_diagnostico()
+        ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
+        ordem_servico.adicionar_item("servico-1", 500.00)
+        ordem_servico.aprovar_e_iniciar_execucao()
+
+        with pytest.raises(ValueError, match="Não é possível retornar"):
+            ordem_servico.retornar_para_recebida()
 
 
 class TestComportamentosOrdemServico:
