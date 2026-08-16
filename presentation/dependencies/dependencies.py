@@ -3,6 +3,12 @@ from fastapi import Depends
 from application.commands.login_user import LoginUserUseCase
 from application.commands.register_user import RegisterUserUseCase
 from application.commands.criar_ordem_servico import CriarOrdemServicoUseCase
+from application.commands.adicionar_item_ordem_servico import (
+    AdicionarItemOrdemServicoUseCase,
+)
+from application.commands.remover_item_ordem_servico import (
+    RemoverItemOrdemServicoUseCase,
+)
 from application.commands.adicionar_insumo_ordem_servico import (
     AdicionarInsumoOrdemServicoUseCase,
 )
@@ -92,6 +98,27 @@ def get_criar_ordem_servico_use_case(
     return CriarOrdemServicoUseCase(
         ordem_servico_repository=repository,
         db=db,
+    )
+
+
+def get_adicionar_item_ordem_servico_use_case(
+    db=Depends(get_db),
+) -> AdicionarItemOrdemServicoUseCase:
+    """Factory para injeção de dependências do caso de uso de adicionar item à OS."""
+
+    return AdicionarItemOrdemServicoUseCase(
+        ordem_servico_repository=OrdemServicoRepositoryImpl(db),
+        servico_repository=ServicoRepositoryImpl(db),
+    )
+
+
+def get_remover_item_ordem_servico_use_case(
+    db=Depends(get_db),
+) -> RemoverItemOrdemServicoUseCase:
+    """Factory para injeção de dependências do caso de uso de remover item da OS."""
+
+    return RemoverItemOrdemServicoUseCase(
+        ordem_servico_repository=OrdemServicoRepositoryImpl(db),
     )
 
 

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Column,
@@ -13,6 +13,17 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from infrastructure.database.database import Base
+
+
+def _agora_utc() -> datetime:
+    """Timestamp atual em UTC, timezone-aware.
+
+    ``datetime.utcnow()`` é depreciado desde o Python 3.12 e devolve um
+    datetime *naive* — usado como ``default``/``onupdate`` de coluna aqui só
+    para manter as mesmas colunas do resto do domínio, que já usa
+    ``datetime.now(UTC)`` em todo lugar (ver ``OrdemServico._atualizar_timestamp``).
+    """
+    return datetime.now(UTC)
 
 
 class UserModel(Base):
@@ -115,8 +126,8 @@ class OrdemServicoModel(Base):
     status = Column(String(50), nullable=False, default="RECEBIDA")
     orcamento = Column(Numeric(10, 2), nullable=True)
     observacoes = Column(Text, nullable=True)
-    data_criacao = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
-    data_atualizacao = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    data_criacao = Column(TIMESTAMP, default=_agora_utc, nullable=False)
+    data_atualizacao = Column(TIMESTAMP, default=_agora_utc, onupdate=_agora_utc, nullable=False)
 
     veiculo = relationship("VeiculoModel", back_populates="ordens_servico")
     ordem_servico_servicos = relationship("OrdemServicoServicoModel", back_populates="ordem_servico")
@@ -133,7 +144,7 @@ class OrdemServicoServicoModel(Base):
     servico_id = Column(Integer, ForeignKey("servicos.id"), primary_key=True)
     valor = Column(Numeric(10, 2), nullable=False, default=0.0)
     quantidade = Column(Integer, nullable=False, default=1)
-    data_adicionado = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+    data_adicionado = Column(TIMESTAMP, default=_agora_utc, nullable=False)
 
     ordem_servico = relationship("OrdemServicoModel", back_populates="ordem_servico_servicos")
     servico = relationship("ServicoModel", back_populates="ordem_servico_servicos")
@@ -152,7 +163,7 @@ class OrdemServicoInsumoModel(Base):
     insumo_id = Column(Integer, ForeignKey("insumos.id"), primary_key=True)
     valor = Column(Numeric(10, 2), nullable=False, default=0.0)
     quantidade = Column(Integer, nullable=False, default=1)
-    data_adicionado = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+    data_adicionado = Column(TIMESTAMP, default=_agora_utc, nullable=False)
 
     ordem_servico = relationship("OrdemServicoModel", back_populates="ordem_servico_insumos")
     insumo = relationship("InsumoModel", back_populates="ordem_servico_insumos")

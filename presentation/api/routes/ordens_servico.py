@@ -2,13 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 
-from infrastructure.database.database import get_db
-from infrastructure.database.models import ServicoModel
-
 from application.commands.criar_ordem_servico import (
     CriarOrdemServicoCommand,
     CriarOrdemServicoUseCase,
     VeiculoNaoEncontradoError,
+)
+from application.commands.adicionar_item_ordem_servico import (
+    AdicionarItemOrdemServicoCommand,
+    AdicionarItemOrdemServicoUseCase,
+    ServicoNaoEncontradoError,
+)
+from application.commands.remover_item_ordem_servico import (
+    RemoverItemOrdemServicoCommand,
+    RemoverItemOrdemServicoUseCase,
 )
 from application.commands.adicionar_insumo_ordem_servico import (
     AdicionarInsumoOrdemServicoCommand,
@@ -56,6 +62,8 @@ from application.queries.list_ordens_servico import (
 )
 from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.dependencies import (
+    get_adicionar_item_ordem_servico_use_case,
+    get_remover_item_ordem_servico_use_case,
     get_adicionar_insumo_ordem_servico_use_case,
     get_remover_insumo_ordem_servico_use_case,
     get_aprovar_orcamento_use_case,
@@ -151,6 +159,8 @@ class RetornarDiagnosticoRequest(BaseModel):
 
 class OrdemServicoResponse(BaseModel):
     """Response com os dados da ordem de serviço"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     veiculo_id: str
     descricao: str
@@ -158,9 +168,6 @@ class OrdemServicoResponse(BaseModel):
     orcamento: Optional[float]
     observacoes: Optional[str]
     quantidade_servicos: int
-
-    class Config:
-        from_attributes = True
 
 
 class CriarOrdemServicoResponse(BaseModel):
@@ -625,42 +632,36 @@ async def enviar_para_aprovacao(
 async def adicionar_item(
     ordem_id: int,
     request: AdicionarItemRequest,
-    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
-    db=Depends(get_db),
+    use_case: AdicionarItemOrdemServicoUseCase = Depends(
+        get_adicionar_item_ordem_servico_use_case
+    ),
 ):
     """Adiciona um serviço à ordem de serviço"""
     try:
-        ordem_servico = await use_case.ordem_servico_repository.find_by_id(ordem_id)
+        ordem_servico = await use_case.execute(
+            AdicionarItemOrdemServicoCommand(
+                ordem_servico_id=ordem_id,
+                servico_id=request.servico_id,
+                quantidade=request.quantidade,
+            )
+        )
 
-        if not ordem_servico:
+        if ordem_servico is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Ordem de serviço {ordem_id} não encontrada",
             )
 
-        # Buscar o serviço no banco para recuperar o valor
-        servico = db.query(ServicoModel).filter(
-            ServicoModel.id == int(request.servico_id)
-        ).first()
-
-        if not servico:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Serviço {request.servico_id} não encontrado",
-            )
-
-        # Adicionar item com o valor do serviço
-        ordem_servico.adicionar_item(
-            servico_id=request.servico_id,
-            valor=float(servico.valor),
-            quantidade=request.quantidade,
-        )
-        await use_case.ordem_servico_repository.save(ordem_servico)
-
         return StatusChangeResponse(
             id=ordem_servico.id,
             status=ordem_servico.status.value,
             message=f"Serviço adicionado. Total de serviços: {len(ordem_servico.itens)}",
+        )
+
+    except ServicoNaoEncontradoError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
         )
 
     except ValueError as e:
@@ -688,20 +689,24 @@ async def adicionar_item(
 async def remover_item(
     ordem_id: int,
     request: RemoverItemRequest,
-    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
+    use_case: RemoverItemOrdemServicoUseCase = Depends(
+        get_remover_item_ordem_servico_use_case
+    ),
 ):
     """Remove um serviço da ordem de serviço"""
     try:
-        ordem_servico = await use_case.ordem_servico_repository.find_by_id(ordem_id)
+        ordem_servico = await use_case.execute(
+            RemoverItemOrdemServicoCommand(
+                ordem_servico_id=ordem_id,
+                servico_id=request.servico_id,
+            )
+        )
 
-        if not ordem_servico:
+        if ordem_servico is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Ordem de serviço {ordem_id} não encontrada",
             )
-
-        ordem_servico.remover_item(request.servico_id)
-        await use_case.ordem_servico_repository.save(ordem_servico)
 
         return StatusChangeResponse(
             id=ordem_servico.id,

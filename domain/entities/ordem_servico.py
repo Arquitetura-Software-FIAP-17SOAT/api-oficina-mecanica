@@ -44,6 +44,8 @@ class OrdemServico:
 
     def adicionar_item(self, servico_id: str, valor: float, quantidade: int = 1):
         """Adiciona um item (serviço) à ordem de serviço"""
+        self._validar_edicao_de_itens()
+
         if not servico_id:
             raise ValueError("ID do serviço é obrigatório")
         
@@ -67,6 +69,8 @@ class OrdemServico:
 
     def remover_item(self, servico_id: str):
         """Remove um item da ordem de serviço"""
+        self._validar_edicao_de_itens()
+
         if not any(item["servico_id"] == servico_id for item in self.itens):
             raise ValueError("Serviço não encontrado nesta ordem de serviço")
         
@@ -82,6 +86,8 @@ class OrdemServico:
         se aplicam aqui: sem duplicidade, quantidade positiva, valor não
         negativo.
         """
+        self._validar_edicao_de_itens()
+
         if not insumo_id:
             raise ValueError("ID do insumo é obrigatório")
 
@@ -114,6 +120,8 @@ class OrdemServico:
         insumos, então quem decide o que fazer com a quantidade é o caso de
         uso.
         """
+        self._validar_edicao_de_itens()
+
         item = next(
             (i for i in self.insumos_utilizados if i["insumo_id"] == insumo_id),
             None,
@@ -295,6 +303,25 @@ class OrdemServico:
             raise ValueError("Orçamento deve ser um valor positivo")
 
         return valor
+
+    def _validar_edicao_de_itens(self):
+        """Bloqueia alterar serviços/insumos depois que a OS foi finalizada.
+
+        Uma OS 'Finalizada' ou 'Entregue' já teve seu orçamento aprovado e
+        (na segunda) o veículo já voltou para o cliente — adicionar ou
+        remover um serviço/insumo nesse ponto não corresponde a nenhum fluxo
+        operacional real e deixaria ``orcamento`` (o que foi aprovado) e
+        ``orcamento_calculado`` (o que está registrado agora) divergentes
+        sem motivo.
+        """
+        if self.status in (
+            StatusOrdemServico.FINALIZADA,
+            StatusOrdemServico.ENTREGUE,
+        ):
+            raise ValueError(
+                "Não é possível alterar os serviços/insumos de uma ordem de "
+                f"serviço no status '{self.status.value}'"
+            )
 
     def _validar_transicao(self, novo_status: StatusOrdemServico):
         """Valida se a transição de status é permitida"""

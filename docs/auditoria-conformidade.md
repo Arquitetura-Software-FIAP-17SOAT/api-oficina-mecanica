@@ -4,13 +4,17 @@ Revisão do que está **de fato implementado** no repositório contra as regras 
 enunciado (Tech Challenge FIAP SOAT) — não do que está planejado. Cada item traz o veredito, a
 evidência no código e, quando há lacuna, uma correção concreta.
 
-- **Branch analisada:** `feature/pecas-e-insumos-os`
-- **Testes:** 552 · **Cobertura:** 97%
-- **Placar:** 18 conforme · 1 parcial · 1 lacuna · 1 crítico
+- **Branch analisada:** `feature/audit`
+- **Testes:** 573 (450 unitários + 123 integração) · **Cobertura combinada:** 97%
+- **Placar:** 22 conforme · 1 parcial · 1 lacuna · 1 crítico
 - **Corrigidos desde a primeira rodada:** JWT nas APIs administrativas (crítico), orçamento gerado
-  automaticamente (lacuna), consulta do cliente sem login administrativo (parcial) e peças/insumos
-  avulsos na OS (lacuna) — todos marcados como ✅, com o achado original preservado para
-  rastreabilidade.
+  automaticamente (lacuna), consulta do cliente sem login administrativo (parcial), peças/insumos
+  avulsos na OS (lacuna) e os 4 pontos da seção F (padrão Command/UseCase em
+  `adicionar-item`/`remover-item`, trava de status ao editar itens/insumos, `datetime.utcnow()`
+  depreciado, `class Config` do Pydantic v1) — todos marcados como ✅, com o achado original
+  preservado para rastreabilidade.
+- **Nesta rodada:** revisão completa contra o PDF novamente, cobertura detalhada por tipo de teste
+  (seção D) e correção dos 4 pontos de atenção que a rodada anterior havia levantado (seção F).
 
 > Legenda: ✅ Conforme · 🟡 Parcial · 🟠 Lacuna · 🔴 Crítico
 
@@ -378,9 +382,39 @@ toda entrada de cliente/veículo.
 - `domain/value_objects/{cpf_cnpj,placa}.py`
 
 ### ✅ Testes unitários e de integração dos fluxos principais
-485 testes, 97% de cobertura de linha+branch nos domínios críticos, separados em `tests/unit` e
-`tests/integration` (repositórios contra SQLite real + API ponta a ponta via `TestClient`) — acima
-do mínimo de 80% pedido.
+573 testes (450 unitários + 123 de integração), separados em `tests/unit` e `tests/integration`
+(repositórios contra SQLite real + API ponta a ponta via `TestClient`) — acima do mínimo de 80%
+pedido em qualquer um dos três recortes:
+
+| Recorte | Testes | Statements | Cobertura linha+branch |
+|---|---|---|---|
+| **Unitário** (`tests/unit`) | 450 | 1524 stmts, 24 miss, 322 branch, 3 parcial | **98%** |
+| **Integração** (`tests/integration`) | 123 | 2581 stmts, 241 miss, 430 branch, 89 parcial | **88%** |
+| **Combinado** (`tests/`) | 573 | 2581 stmts, 69 miss, 430 branch, 10 parcial | **97%** |
+
+Os números não são intercambiáveis, e a diferença é esperada, não um problema:
+
+- **O recorte unitário roda com mocks** e nunca importa `presentation/api/routes/*.py` nem os
+  `*_dependencies.py` — por isso mede só 1524 statements (domínio, casos de uso, VOs, alguns
+  repositórios exercitados via mock) contra os 2581 do app inteiro. Cobre bem as regras de negócio
+  e os caminhos de erro (ex.: as validações de `OrdemServico`, `CpfCnpj`, `Placa`).
+- **O recorte de integração sobe o app inteiro** (rotas, DI, SQLAlchemy contra SQLite), então mede
+  os 2581 statements completos — mas roda menos casos de borda por request (não vale reescrever em
+  HTTP toda combinação que o teste unitário já cobre em memória), daí os 88%.
+- **O combinado é o que importa** — é o que o `pytest` roda por padrão (`uv run pytest`) e o que
+  soma as duas coberturas: 97%, com folga sobre os 80% mínimos exigidos "across the domains
+  critics".
+
+Os 69 statements não cobertos no combinado se concentram em dois padrões, ambos por decisão de
+design e não por lacuna de teste:
+
+- **Handlers `except Exception → 500`** em quase toda rota (ex.:
+  `presentation/api/routes/ordens_servico.py:313-323, 394-398, ...`, 9 ocorrências) — nunca
+  disparados de propósito, porque simulá-los exigiria forçar uma falha interna arbitrária.
+  Concentram a maior parte da diferença: `ordens_servico.py` sozinho fica em 85% (41 linhas).
+- **`infrastructure/database/database.py`** (67%) — `create_tables()` e o `get_db()` real contra
+  Postgres; os testes de integração usam SQLite via `dependency_overrides`, então esse código só
+  roda de fato subindo a aplicação com Docker Compose.
 
 - `tests/unit/`
 - `tests/integration/`
@@ -411,9 +445,79 @@ justificá-la") e hoje ausente do texto. Correção é um parágrafo no README.
 
 ---
 
+## F. Pontos de correção e atenção (revisão adicional)
+
+Não vêm de uma regra específica do enunciado — são achados de revisar o estado atual do código,
+sobretudo o que as últimas features deixaram para trás. Os quatro já foram corrigidos.
+
+### ✅ `adicionar-item`/`remover-item` ainda fora do padrão Command/UseCase — Corrigido
+> **Achado original:** toda transição de status e os dois endpoints de insumo
+> (`adicionar-insumo`, `remover-insumo`) seguiam o desenho `Command` (dataclass) + `UseCase`
+> dedicado. `adicionar_item` e `remover_item` — os dois endpoints mais antigos, mexendo na mesma
+> lista `ordem_servico.itens` — ainda reaproveitavam `CriarOrdemServicoUseCase` só para acessar
+> `.ordem_servico_repository` diretamente, e `adicionar_item` consultava `ServicoModel` via
+> `db.query(...)` cru dentro da rota.
+
+Extraídos `AdicionarItemOrdemServicoUseCase` e `RemoverItemOrdemServicoUseCase`, no mesmo molde de
+`AdicionarInsumoOrdemServicoUseCase`/`RemoverInsumoOrdemServicoUseCase`: um `Command` por operação,
+injeção via `presentation/dependencies/dependencies.py`, e o preço do serviço buscado através de
+`ServicoRepository.find_by_id` (nunca mais SQL solto na rota). `adicionar_item` agora levanta
+`ServicoNaoEncontradoError` — mapeado para 404, mesma mensagem e status code de antes — em vez de
+checar `if not servico` inline.
+
+**Arquivos:** `application/commands/adicionar_item_ordem_servico.py`,
+`application/commands/remover_item_ordem_servico.py`,
+`presentation/dependencies/dependencies.py`, `presentation/api/routes/ordens_servico.py`
+
+### ✅ Nenhuma trava de status ao adicionar/remover item ou insumo — Corrigido
+> **Achado original:** `adicionar_item`, `remover_item`, `adicionar_insumo` e `remover_insumo` não
+> chamavam `_validar_transicao` nem checavam `self.status` — funcionavam em **qualquer** status da
+> OS. Uma ordem já `Entregue` ainda aceitava receber um novo serviço ou insumo.
+
+Novo guard `_validar_edicao_de_itens()` na entidade, chamado no início dos quatro métodos: bloqueia
+`FINALIZADA` e `ENTREGUE`, libera todos os outros status (inclusive `EM_EXECUCAO` — um serviço
+extra identificado durante a execução ainda precisa poder ser adicionado). `adicionar_insumo`
+respeita a mesma trava *antes* de qualquer baixa de estoque, então uma tentativa numa OS entregue
+não debita nada.
+
+```python
+# domain/entities/ordem_servico.py
+def _validar_edicao_de_itens(self):
+    if self.status in (StatusOrdemServico.FINALIZADA, StatusOrdemServico.ENTREGUE):
+        raise ValueError(
+            "Não é possível alterar os serviços/insumos de uma ordem de "
+            f"serviço no status '{self.status.value}'"
+        )
+```
+
+**Arquivos:** `domain/entities/ordem_servico.py` (métodos `adicionar_item`, `remover_item`,
+`adicionar_insumo`, `remover_insumo`)
+
+### ✅ `datetime.utcnow()` depreciado em `models.py` — Corrigido
+> **Achado original:** quatro colunas usavam `default=datetime.utcnow` — depreciado desde o
+> Python 3.12, origem de um `DeprecationWarning` em toda execução da suíte.
+
+Trocado por um helper `_agora_utc()` (`datetime.now(UTC)`), consistente com o resto do domínio.
+Confirmado: o `DeprecationWarning` não aparece mais na saída do `pytest`.
+
+- `infrastructure/database/models.py`
+
+### ✅ `class Config` (Pydantic v1) sobrevivendo ao lado de `ConfigDict` — Corrigido
+> **Achado original:** `OrdemServicoResponse` era a única das 9 classes de response do arquivo
+> ainda usando `class Config: from_attributes = True`, em vez de
+> `model_config = ConfigDict(from_attributes=True)` — origem de um `PydanticDeprecatedSince20`.
+
+Trocado. Confirmado: o warning também sumiu da saída do `pytest` — a suíte inteira roda hoje com
+um único warning (`StarletteDeprecationWarning` do `TestClient`, sobre o `httpx` do próprio
+FastAPI/Starlette, fora do escopo desta auditoria).
+
+- `presentation/api/routes/ordens_servico.py`
+
+---
+
 ## Conclusão
 
-**Já corrigido nesta rodada:**
+**Já corrigido, ao longo das duas últimas rodadas:**
 
 1. ✅ Superfície administrativa sem JWT — proteção movida para o nível do `APIRouter`; só
    `register` e `login` seguem públicos.
@@ -423,15 +527,23 @@ justificá-la") e hoje ausente do texto. Correção é um parágrafo no README.
    OS + CPF/CNPJ, em router próprio e com resposta reduzida.
 4. ✅ Peças/insumos avulsos na OS — nova tabela de junção, métodos de domínio espelhando os de
    serviço, e dois casos de uso que debitam/estornam o estoque via `Insumo.remover_estoque`.
+5. ✅ `adicionar-item`/`remover-item` migrados para o padrão Command/UseCase (seção F).
+6. ✅ Trava de status ao editar itens/insumos — bloqueia `FINALIZADA` e `ENTREGUE` nos quatro
+   métodos (seção F).
+7. ✅ `datetime.utcnow()` depreciado, trocado por `datetime.now(UTC)` (seção F).
+8. ✅ `class Config` do Pydantic v1 trocado por `ConfigDict` (seção F). Os dois últimos juntos
+   eliminaram os `DeprecationWarning`/`PydanticDeprecatedSince20` que apareciam em toda execução
+   da suíte — hoje só resta 1 warning, do `TestClient` do próprio FastAPI.
 
 **Aberto, em ordem de prioridade:**
 
-1. 🔴 **Chave JWT hardcoded inoperante** — o único crítico restante e o de menor esforço:
-   `JWT_SECRET_KEY` no `.env` não tem efeito nenhum, então a aplicação usa em qualquer ambiente o
-   segredo versionado no repositório. Enquanto isso não for corrigido, qualquer pessoa com acesso
-   ao código forja um token administrativo válido — e a proteção de JWT recém-adicionada não vale
-   muito. Entra direto no relatório de vulnerabilidades pedido no enunciado.
-2. 🟠 Tempo médio de execução (o histórico de status já tem os timestamps necessários).
+1. 🔴 **Chave JWT hardcoded inoperante** — o único crítico restante, e o de menor esforço para
+   corrigir: `JWT_SECRET_KEY` no `.env` não tem efeito nenhum, então a aplicação usa em qualquer
+   ambiente o segredo versionado no repositório. Enquanto isso não for corrigido, qualquer pessoa
+   com acesso ao código forja um token administrativo válido — e toda a proteção de JWT já
+   implementada não vale muito. Entra direto no relatório de vulnerabilidades pedido no enunciado.
+2. 🟠 Tempo médio de execução (o histórico de status já tem os timestamps necessários) — a única
+   lacuna funcional que resta do enunciado original.
 3. 🟡 Justificativa da escolha do banco no README.
 4. *Rate limiting* na consulta pública do cliente (ver seção B).
 5. A baixa de estoque e a persistência da OS não são atômicas na adição de insumo (dois commits
