@@ -6,6 +6,7 @@ CNPJ_LENGTH = 14
 
 CNPJ_PESOS_PRIMEIRO_DIGITO = (5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2)
 CNPJ_PESOS_SEGUNDO_DIGITO = (6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2)
+CNPJ_REGEX = re.compile(r"^[A-Z0-9]{12}[0-9]{2}$")
 
 
 @dataclass(frozen=True)
@@ -22,26 +23,26 @@ class CpfCnpj:
         if not documento or not str(documento).strip():
             raise ValueError("O CPF/CNPJ deve ser preenchido.")
 
-        digitos = re.sub(r"\D", "", str(documento))
+        valor = str(documento).strip().upper()
 
-        if len(digitos) not in (CPF_LENGTH, CNPJ_LENGTH):
+        valor = re.sub(r"[\s./-]", "", valor)
+
+        if len(valor) not in (CPF_LENGTH, CNPJ_LENGTH):
             raise ValueError(
-                "O CPF deve possuir 11 dígitos e o CNPJ 14 dígitos."
+                "O CPF deve possuir 11 dígitos e o CNPJ 14 caracteres."
             )
 
-        if digitos == digitos[0] * len(digitos):
+        if valor == valor[0] * len(valor):
             raise ValueError("O CPF/CNPJ informado é inválido.")
 
-        valido = (
-            cls._cpf_valido(digitos)
-            if len(digitos) == CPF_LENGTH
-            else cls._cnpj_valido(digitos)
-        )
+        if len(valor) == CPF_LENGTH:
+            if not valor.isdigit() or not cls._cpf_valido(valor):
+                raise ValueError("O CPF/CNPJ informado é inválido.")
+        else:
+            if not CNPJ_REGEX.fullmatch(valor) or not cls._cnpj_valido(valor):
+                raise ValueError("O CPF/CNPJ informado é inválido.")
 
-        if not valido:
-            raise ValueError("O CPF/CNPJ informado é inválido.")
-
-        return digitos
+        return valor
 
     @staticmethod
     def _digito_verificador(soma: int) -> str:
@@ -64,26 +65,40 @@ class CpfCnpj:
 
         return digitos[10] == segundo
 
+    @staticmethod
+    def _valor_cnpj(caractere: str) -> int:
+        return ord(caractere) - 48
+
     @classmethod
-    def _cnpj_valido(cls, digitos: str) -> bool:
+    def _cnpj_valido(cls, cnpj: str) -> bool:
+        base = cnpj[:12]
+
         primeiro = cls._digito_verificador(
             sum(
-                int(digito) * peso
-                for digito, peso in zip(digitos, CNPJ_PESOS_PRIMEIRO_DIGITO)
+                cls._valor_cnpj(caractere) * peso
+                for caractere, peso in zip(
+                    base,
+                    CNPJ_PESOS_PRIMEIRO_DIGITO,
+                )
             )
         )
 
-        if digitos[12] != primeiro:
+        if cnpj[12] != primeiro:
             return False
+
+        base_segundo = base + primeiro
 
         segundo = cls._digito_verificador(
             sum(
-                int(digito) * peso
-                for digito, peso in zip(digitos, CNPJ_PESOS_SEGUNDO_DIGITO)
+                cls._valor_cnpj(caractere) * peso
+                for caractere, peso in zip(
+                    base_segundo,
+                    CNPJ_PESOS_SEGUNDO_DIGITO,
+                )
             )
         )
 
-        return digitos[13] == segundo
+        return cnpj[13] == segundo
 
     @property
     def is_cpf(self) -> bool:
