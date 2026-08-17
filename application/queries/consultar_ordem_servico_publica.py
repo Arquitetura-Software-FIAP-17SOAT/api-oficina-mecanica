@@ -1,5 +1,5 @@
-import re
 from dataclasses import dataclass
+from domain.value_objects.cpf_cnpj import CpfCnpj
 
 from application.queries.get_ordem_servico_detalhada import (
     GetOrdemServicoDetalhadaUseCase,
@@ -56,8 +56,11 @@ class ConsultarOrdemServicoPublicaUseCase:
 
     @staticmethod
     def _normalizar_documento(cpf_cnpj: str | None) -> str | None:
-        """Compara apenas os dígitos — o cliente pode digitar com ou sem máscara."""
+        """Normaliza e valida CPF/CNPJ para comparação com o documento cadastrado."""
         if not cpf_cnpj:
             return None
 
-        return re.sub(r"\D", "", cpf_cnpj) or None
+        try:
+            return str(CpfCnpj(cpf_cnpj))
+        except ValueError:
+            return None

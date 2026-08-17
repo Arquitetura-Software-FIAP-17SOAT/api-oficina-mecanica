@@ -110,3 +110,27 @@ def test_cnpj_com_digito_verificador_invalido(documento):
 
     with pytest.raises(ValueError, match="inválido"):
         CpfCnpj(documento)
+
+def test_cria_cnpj_alfanumerico_valido():
+    documento = CpfCnpj("12.ABC.345/01DE-35")
+
+    assert documento.value == "12ABC34501DE35"
+    assert documento.is_cpf is False
+    assert documento.tipo == "CNPJ"
+
+
+def test_cnpj_alfanumerico_minusculo_e_normalizado():
+    documento = CpfCnpj("12.abc.345/01de-35")
+
+    assert documento.value == "12ABC34501DE35"
+
+
+def test_formatacao_cnpj_alfanumerico():
+    documento = CpfCnpj("12ABC34501DE35")
+
+    assert documento.formatado() == "12.ABC.345/01DE-35"
+
+
+def test_cnpj_alfanumerico_com_dv_invalido():
+    with pytest.raises(ValueError, match="inválido"):
+        CpfCnpj("12.ABC.345/01DE-36")
