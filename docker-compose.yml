@@ -1,6 +1,9 @@
+version: "3.9"
+
 services:
   db:
-    image: postgres:16
+    image: postgres:16-alpine
+    container_name: oficina_postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -19,14 +22,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["python", "-m", "uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    container_name: oficina_app
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/oficina
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/oficina
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-42b38697d6c921058ddcfdd5ed5d89faf0c671e3}
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRE_MINUTES: 60
+    volumes:
+      - .:/app
     restart: unless-stopped
 
 volumes:
