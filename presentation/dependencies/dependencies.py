@@ -31,6 +31,12 @@ from application.commands.entregar_ordem_servico import EntregarOrdemServicoUseC
 from application.commands.retornar_ordem_servico_para_diagnostico import (
     RetornarOrdemServicoParaDiagnosticoUseCase,
 )
+from application.commands.iniciar_execucao_servico import (
+    IniciarExecucaoServicoUseCase,
+)
+from application.commands.finalizar_execucao_servico import (
+    FinalizarExecucaoServicoUseCase,
+)
 from application.queries.consultar_ordem_servico_publica import (
     ConsultarOrdemServicoPublicaUseCase,
 )
@@ -236,3 +242,19 @@ def get_consultar_ordem_servico_publica_use_case(
     return ConsultarOrdemServicoPublicaUseCase(
         get_ordem_servico_detalhada_use_case=get_ordem_servico_detalhada_use_case(db),
     )
+
+
+def get_iniciar_execucao_servico_use_case(
+    db=Depends(get_db),
+) -> IniciarExecucaoServicoUseCase:
+    """Factory para injeção de dependências do caso de uso de início de execução de serviço."""
+
+    return IniciarExecucaoServicoUseCase(db=db)
+
+
+def get_finalizar_execucao_servico_use_case(
+    db=Depends(get_db),
+) -> FinalizarExecucaoServicoUseCase:
+    """Factory para injeção de dependências do caso de uso de fim de execução de serviço."""
+
+    return FinalizarExecucaoServicoUseCase(db=db)

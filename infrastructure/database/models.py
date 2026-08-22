@@ -145,6 +145,8 @@ class OrdemServicoServicoModel(Base):
     valor = Column(Numeric(10, 2), nullable=False, default=0.0)
     quantidade = Column(Integer, nullable=False, default=1)
     data_adicionado = Column(TIMESTAMP, default=_agora_utc, nullable=False)
+    data_inicio = Column(TIMESTAMP, nullable=True)
+    data_fim = Column(TIMESTAMP, nullable=True)
 
     ordem_servico = relationship("OrdemServicoModel", back_populates="ordem_servico_servicos")
     servico = relationship("ServicoModel", back_populates="ordem_servico_servicos")
