@@ -107,3 +107,43 @@ class ServicoRepositoryImpl(ServicoRepository):
             .first()
             is not None
         )
+
+    async def list_tempo_medio_execucao(self) -> list[tuple[int, str, float, int]]:
+        """Calcula no banco a média das execuções concluídas por serviço."""
+        dialect = self.db.get_bind().dialect.name
+        if dialect == "sqlite":
+            duracao_em_horas = (
+                func.julianday(OrdemServicoServicoModel.data_fim)
+                - func.julianday(OrdemServicoServicoModel.data_inicio)
+            ) * 24
+        else:
+            duracao_em_horas = func.extract(
+                "epoch",
+                OrdemServicoServicoModel.data_fim
+                - OrdemServicoServicoModel.data_inicio,
+            ) / 3600
+
+        rows = (
+            self.db.query(
+                ServicoModel.id,
+                ServicoModel.nome,
+                func.avg(duracao_em_horas),
+                func.count(OrdemServicoServicoModel.ordem_servico_id),
+            )
+            .join(
+                OrdemServicoServicoModel,
+                OrdemServicoServicoModel.servico_id == ServicoModel.id,
+            )
+            .filter(
+                OrdemServicoServicoModel.data_inicio.is_not(None),
+                OrdemServicoServicoModel.data_fim.is_not(None),
+            )
+            .group_by(ServicoModel.id, ServicoModel.nome)
+            .order_by(ServicoModel.nome)
+            .all()
+        )
+
+        return [
+            (servico_id, nome, float(tempo_medio), quantidade)
+            for servico_id, nome, tempo_medio, quantidade in rows
+        ]

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
+from datetime import datetime
 
 from application.commands.criar_ordem_servico import (
     CriarOrdemServicoCommand,
@@ -49,6 +50,14 @@ from application.commands.retornar_ordem_servico_para_diagnostico import (
     RetornarOrdemServicoParaDiagnosticoCommand,
     RetornarOrdemServicoParaDiagnosticoUseCase,
 )
+from application.commands.iniciar_execucao_servico import (
+    IniciarExecucaoServicoCommand,
+    IniciarExecucaoServicoUseCase,
+)
+from application.commands.finalizar_execucao_servico import (
+    FinalizarExecucaoServicoCommand,
+    FinalizarExecucaoServicoUseCase,
+)
 from application.queries.get_ordem_servico_detalhada import (
     GetOrdemServicoDetalhadaUseCase,
     InsumoUtilizadoDetalhado,
@@ -75,6 +84,8 @@ from presentation.dependencies.dependencies import (
     get_list_ordens_servico_use_case,
     get_ordem_servico_detalhada_use_case,
     get_retornar_ordem_servico_para_diagnostico_use_case,
+    get_iniciar_execucao_servico_use_case,
+    get_finalizar_execucao_servico_use_case,
 )
 
 router = APIRouter(
@@ -154,6 +165,23 @@ class RetornarDiagnosticoRequest(BaseModel):
     """Request para retornar para diagnóstico"""
     motivo: Optional[str] = Field(None, description="Motivo da devolução")
 
+
+class IniciarExecucaoRequest(BaseModel):
+    """Request para iniciar a execução de um serviço"""
+    data_inicio: Optional[str] = Field(
+        None,
+        description="Data e hora de início (ISO 8601). Se omitida, usa a hora atual.",
+        examples=["2025-01-15T10:30:00Z"],
+    )
+
+
+class FinalizarExecucaoRequest(BaseModel):
+    """Request para finalizar a execução de um serviço"""
+    data_fim: Optional[str] = Field(
+        None,
+        description="Data e hora de término (ISO 8601). Se omitida, usa a hora atual.",
+        examples=["2025-01-15T12:30:00Z"],
+    )
 
 # ==================== Responses ====================
 
@@ -262,6 +290,15 @@ class OrdensServicoPaginadasResponse(BaseModel):
     page_size: int
     total_paginas: int
 
+
+class ExecucaoServicoResponse(BaseModel):
+    """Response para operações de execução de serviço (início e fim)"""
+    ordem_servico_id: int
+    servico_id: int
+    data_inicio: Optional[str]
+    data_fim: Optional[str]
+    tempo_execucao_horas: Optional[float] = None
+    mensagem: str
 
 # ==================== Endpoints ====================
 
@@ -1048,4 +1085,130 @@ async def retornar_diagnostico(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao retornar para diagnóstico",
+        )
+
+
+@router.post(
+    "/{ordem_id}/servicos/{servico_id}/iniciar",
+    response_model=ExecucaoServicoResponse,
+    summary="Iniciar Execução de Serviço",
+    description="Registra o início da execução de um serviço específico em uma ordem de serviço",
+)
+async def iniciar_execucao_servico(
+    ordem_id: int,
+    servico_id: int,
+    request: IniciarExecucaoRequest,
+    use_case: IniciarExecucaoServicoUseCase = Depends(
+        get_iniciar_execucao_servico_use_case
+    ),
+):
+    """
+    Registra quando um serviço inicia sua execução.
+
+    Validações:
+    - Ordem de serviço deve existir
+    - Serviço deve estar adicionado à ordem
+    - Serviço não pode já ter começado
+    - data_inicio não pode ser no futuro
+    """
+    try:
+        # Parse data_inicio se fornecida
+        data_inicio = None
+        if request.data_inicio:
+            data_inicio = datetime.fromisoformat(request.data_inicio.replace('Z', '+00:00'))
+
+        command = IniciarExecucaoServicoCommand(
+            ordem_servico_id=ordem_id,
+            servico_id=servico_id,
+            data_inicio=data_inicio,
+        )
+
+        resultado = await use_case.execute(command)
+
+        return ExecucaoServicoResponse(
+            ordem_servico_id=resultado["ordem_servico_id"],
+            servico_id=resultado["servico_id"],
+            data_inicio=resultado["data_inicio"].isoformat() if resultado["data_inicio"] else None,
+            data_fim=resultado["data_fim"].isoformat() if resultado["data_fim"] else None,
+            mensagem=resultado["mensagem"],
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao iniciar execução do serviço",
+        )
+
+
+@router.post(
+    "/{ordem_id}/servicos/{servico_id}/finalizar",
+    response_model=ExecucaoServicoResponse,
+    summary="Finalizar Execução de Serviço",
+    description="Registra o fim da execução de um serviço específico e calcula o tempo total",
+)
+async def finalizar_execucao_servico(
+    ordem_id: int,
+    servico_id: int,
+    request: FinalizarExecucaoRequest,
+    use_case: FinalizarExecucaoServicoUseCase = Depends(
+        get_finalizar_execucao_servico_use_case
+    ),
+):
+    """
+    Registra quando um serviço finaliza sua execução.
+
+    Calcula e retorna o tempo total de execução em horas.
+
+    Validações:
+    - Ordem de serviço deve existir
+    - Serviço deve estar adicionado à ordem
+    - Serviço deve ter um data_inicio registrado
+    - data_fim não pode ser anterior a data_inicio
+    - data_fim não pode ser no futuro
+    """
+    try:
+        # Parse data_fim se fornecida
+        data_fim = None
+        if request.data_fim:
+            data_fim = datetime.fromisoformat(request.data_fim.replace('Z', '+00:00'))
+
+        command = FinalizarExecucaoServicoCommand(
+            ordem_servico_id=ordem_id,
+            servico_id=servico_id,
+            data_fim=data_fim,
+        )
+
+        resultado = await use_case.execute(command)
+
+        return ExecucaoServicoResponse(
+            ordem_servico_id=resultado["ordem_servico_id"],
+            servico_id=resultado["servico_id"],
+            data_inicio=resultado["data_inicio"].isoformat() if resultado["data_inicio"] else None,
+            data_fim=resultado["data_fim"].isoformat() if resultado["data_fim"] else None,
+            tempo_execucao_horas=resultado["tempo_execucao_horas"],
+            mensagem=resultado["mensagem"],
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao finalizar execução do serviço",
         )

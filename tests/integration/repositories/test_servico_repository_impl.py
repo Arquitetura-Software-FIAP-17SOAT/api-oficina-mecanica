@@ -1,9 +1,11 @@
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
 from domain.entities.servico import Servico
 from infrastructure.database.models import (
+    OrdemServicoModel,
     OrdemServicoServicoModel,
     ServicoInsumoModel,
 )
@@ -142,3 +144,51 @@ async def test_has_vinculos_por_ordem_servico(db_session):
     db_session.commit()
 
     assert await repository.has_vinculos(servico.id) is True
+
+
+@pytest.mark.asyncio
+async def test_list_tempo_medio_execucao_ignora_execucoes_incompletas(db_session):
+    servico = criar_servico(db_session)
+    usuario = criar_usuario(db_session)
+    cliente = criar_cliente(db_session, usuario.id)
+    marca = criar_marca(db_session)
+    veiculo = criar_veiculo(db_session, cliente.id, marca.id)
+
+    primeira_ordem = OrdemServicoModel(
+        veiculo_id=veiculo.id, descricao="Manutenção 1", status="Em execução"
+    )
+    segunda_ordem = OrdemServicoModel(
+        veiculo_id=veiculo.id, descricao="Manutenção 2", status="Em execução"
+    )
+    db_session.add_all([primeira_ordem, segunda_ordem])
+    db_session.commit()
+    db_session.refresh(primeira_ordem)
+    db_session.refresh(segunda_ordem)
+
+    inicio = datetime(2025, 1, 15, 10, 0, 0)
+    db_session.add_all(
+        [
+            OrdemServicoServicoModel(
+                ordem_servico_id=primeira_ordem.id,
+                servico_id=servico.id,
+                valor=Decimal("120.00"),
+                data_inicio=inicio,
+                data_fim=inicio + timedelta(hours=2),
+            ),
+            OrdemServicoServicoModel(
+                ordem_servico_id=segunda_ordem.id,
+                servico_id=servico.id,
+                valor=Decimal("120.00"),
+                data_inicio=inicio,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    repository = ServicoRepositoryImpl(db_session)
+    resultado = await repository.list_tempo_medio_execucao()
+
+    assert resultado[0][0] == servico.id
+    assert resultado[0][1] == servico.nome
+    assert resultado[0][2] == pytest.approx(2.0)
+    assert resultado[0][3] == 1
