@@ -35,3 +35,8 @@ class ServicoRepository(ABC):
     @abstractmethod
     async def has_vinculos(self, servico_id: int) -> bool:
         pass
+
+    @abstractmethod
+    async def list_tempo_medio_execucao(self) -> list[tuple[int, str, float, int]]:
+        """Retorna a média de execução dos serviços concluídos, agrupada por serviço."""
+        pass

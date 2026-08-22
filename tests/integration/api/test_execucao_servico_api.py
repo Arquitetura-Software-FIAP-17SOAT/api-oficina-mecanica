@@ -194,3 +194,21 @@ def test_endpoints_de_execucao_nao_aceitam_patch(client, db_session):
     )
 
     assert response.status_code == 405
+
+
+def test_impede_iniciar_execucao_fora_do_status_em_execucao(client, db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+    servico = criar_servico(db_session)
+    ordem_id = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+    ).json()["id"]
+
+    response = client.post(
+        f"/ordens-servico/{ordem_id}/servicos/{servico.id}/iniciar",
+        json={},
+    )
+
+    assert response.status_code == 400
+    assert "precisa estar em execução" in response.json()["detail"]

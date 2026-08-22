@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS ordem_servico_servicos (
     valor NUMERIC(10,2) NOT NULL DEFAULT 0.0,
     quantidade INT NOT NULL DEFAULT 1,
     data_adicionado TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    data_inicio TIMESTAMP,
+    data_fim TIMESTAMP,
 
     PRIMARY KEY (ordem_servico_id, servico_id),
 

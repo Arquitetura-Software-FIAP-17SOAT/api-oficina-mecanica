@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from infrastructure.database.models import OrdemServicoServicoModel, OrdemServicoModel
+from domain.value_objects.status_ordem_servico import StatusOrdemServico
 
 
 def _normalizar_utc(data: datetime) -> datetime:
@@ -44,6 +45,9 @@ class IniciarExecucaoServicoUseCase:
         
         if not ordem:
             raise ValueError(f"Ordem de serviço {command.ordem_servico_id} não encontrada")
+
+        if ordem.status != StatusOrdemServico.EM_EXECUCAO.value:
+            raise ValueError("A ordem de serviço precisa estar em execução")
         
         # Buscar o item de serviço na ordem
         item = self.db.query(OrdemServicoServicoModel).filter(
