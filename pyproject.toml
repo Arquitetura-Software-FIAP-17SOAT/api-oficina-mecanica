@@ -24,6 +24,7 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "pytest-pythonpath>=0.7.3",
+    "httpx2>=2.0.0",
 ]
 
 [tool.coverage.run]
