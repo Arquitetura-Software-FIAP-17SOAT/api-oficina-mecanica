@@ -59,7 +59,7 @@ class ListOrdensServicoUseCase:
             skip=skip,
             limit=page_size,
             status=query.status,
-            cpf_cnpj=self._normalizar_digitos(query.cpf_cnpj),
+            cpf_cnpj=self._normalizar_documento(query.cpf_cnpj),
             placa=self._normalizar_placa(query.placa),
         )
 
@@ -68,13 +68,14 @@ class ListOrdensServicoUseCase:
         )
 
     @staticmethod
-    def _normalizar_digitos(valor: str | None) -> str | None:
+    def _normalizar_documento(valor: str | None) -> str | None:
+        """Remove máscara preservando letras — CNPJs alfanuméricos são válidos."""
         if not valor:
             return None
 
-        digitos = re.sub(r"\D", "", valor)
+        documento = re.sub(r"[^A-Za-z0-9]", "", valor).upper()
 
-        return digitos or None
+        return documento or None
 
     @staticmethod
     def _normalizar_placa(valor: str | None) -> str | None:
