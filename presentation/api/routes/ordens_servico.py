@@ -53,6 +53,7 @@ from application.commands.retornar_ordem_servico_para_diagnostico import (
 from application.commands.iniciar_execucao_servico import (
     IniciarExecucaoServicoCommand,
     IniciarExecucaoServicoUseCase,
+    OrdemServicoNaoEncontradaError,
 )
 from application.commands.finalizar_execucao_servico import (
     FinalizarExecucaoServicoCommand,
@@ -68,6 +69,9 @@ from application.queries.list_ordens_servico import (
     ListOrdensServicoQuery,
     ListOrdensServicoUseCase,
     OrdensServicoPaginadas,
+)
+from application.queries.list_tempo_medio_execucao import (
+    ListTempoMedioExecucaoUseCase,
 )
 from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.dependencies import (
@@ -86,6 +90,7 @@ from presentation.dependencies.dependencies import (
     get_retornar_ordem_servico_para_diagnostico_use_case,
     get_iniciar_execucao_servico_use_case,
     get_finalizar_execucao_servico_use_case,
+    get_list_tempo_medio_execucao_use_case,
 )
 
 router = APIRouter(
@@ -300,6 +305,14 @@ class ExecucaoServicoResponse(BaseModel):
     tempo_execucao_horas: Optional[float] = None
     mensagem: str
 
+
+class TempoMedioExecucaoResponse(BaseModel):
+    """Tempo médio das execuções concluídas de um serviço"""
+    servico_id: int
+    nome_servico: str
+    tempo_medio_horas: float
+    quantidade_execucoes: int
+
 # ==================== Endpoints ====================
 
 @router.post(
@@ -435,6 +448,45 @@ async def listar_ordens_servico(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao listar ordens de serviço",
+        )
+
+
+@router.get(
+    "/metricas/tempo-medio-execucao",
+    response_model=list[TempoMedioExecucaoResponse],
+    summary="Tempo Médio de Execução por Serviço",
+    description=(
+        "Retorna, para cada serviço do catálogo com execuções concluídas, o "
+        "tempo médio em horas e a quantidade de execuções consideradas. "
+        "**Requer autenticação (Bearer token).**"
+    ),
+)
+async def listar_tempo_medio_execucao(
+    use_case: ListTempoMedioExecucaoUseCase = Depends(
+        get_list_tempo_medio_execucao_use_case
+    ),
+):
+    """Consulta a métrica de monitoramento do tempo médio de execução dos serviços."""
+    try:
+        metricas = await use_case.execute()
+
+        return [
+            TempoMedioExecucaoResponse(
+                servico_id=metrica.servico_id,
+                nome_servico=metrica.nome_servico,
+                tempo_medio_horas=metrica.tempo_medio_horas,
+                quantidade_execucoes=metrica.quantidade_execucoes,
+            )
+            for metrica in metricas
+        ]
+
+    except HTTPException:
+        raise
+
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao consultar tempo médio de execução",
         )
 
 
@@ -1133,6 +1185,12 @@ async def iniciar_execucao_servico(
             mensagem=resultado["mensagem"],
         )
 
+    except OrdemServicoNaoEncontradaError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1196,6 +1254,12 @@ async def finalizar_execucao_servico(
             data_fim=resultado["data_fim"].isoformat() if resultado["data_fim"] else None,
             tempo_execucao_horas=resultado["tempo_execucao_horas"],
             mensagem=resultado["mensagem"],
+        )
+
+    except OrdemServicoNaoEncontradaError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
         )
 
     except ValueError as e:

@@ -90,6 +90,8 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
                     valor=item.get('valor', 0.0),
                     quantidade=item.get('quantidade', 1),
                     data_adicionado=item.get('data_adicionado'),
+                    data_inicio=item.get('data_inicio'),
+                    data_fim=item.get('data_fim'),
                 )
                 self.db.add(servico_model)
 
@@ -229,6 +231,8 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
                 'valor': float(item_model.valor) if item_model.valor else 0.0,
                 'quantidade': item_model.quantidade if item_model.quantidade else 1,
                 'data_adicionado': item_model.data_adicionado,
+                'data_inicio': item_model.data_inicio,
+                'data_fim': item_model.data_fim,
             })
 
         # Carregar insumos avulsos da ordem
