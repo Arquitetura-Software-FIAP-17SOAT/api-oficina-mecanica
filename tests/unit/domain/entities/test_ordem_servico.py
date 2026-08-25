@@ -506,6 +506,14 @@ class TestComportamentosOrdemServico:
         assert StatusOrdemServico.AGUARDANDO_APROVACAO in transicoes_em_diagnostico
         assert StatusOrdemServico.RECEBIDA in transicoes_em_diagnostico
 
+        transicoes_aguardando = StatusOrdemServico.get_transicoes_validas(
+            StatusOrdemServico.AGUARDANDO_APROVACAO
+        )
+        assert StatusOrdemServico.EM_EXECUCAO in transicoes_aguardando
+        # Transição exposta por retornar_para_diagnostico — precisa constar no grafo
+        assert StatusOrdemServico.EM_DIAGNOSTICO in transicoes_aguardando
+        assert StatusOrdemServico.RECEBIDA in transicoes_aguardando
+
         transicoes_entregue = StatusOrdemServico.get_transicoes_validas(
             StatusOrdemServico.ENTREGUE
         )
