@@ -241,12 +241,18 @@ class OrdemServico:
         )
 
     def retornar_para_diagnostico(self, motivo: str = None):
-        """Retorna a OS para diagnóstico (quando cliente não aprova)"""
+        """Retorna a OS para diagnóstico (quando cliente não aprova).
+
+        Só faz sentido a partir de 'Aguardando aprovação' — apesar de o grafo
+        também permitir chegar em 'Em diagnóstico' a partir de 'Recebida',
+        esse caminho é o ``iniciar_diagnostico``, não um retorno.
+        """
         if self.status not in [StatusOrdemServico.AGUARDANDO_APROVACAO]:
             raise ValueError(
                 f"Não é possível retornar para diagnóstico a partir do status '{self.status.value}'"
             )
-        
+
+        self._validar_transicao(StatusOrdemServico.EM_DIAGNOSTICO)
         self.status = StatusOrdemServico.EM_DIAGNOSTICO
         motivo_registro = motivo or "Retornado para revisão de diagnóstico"
         self._registrar_mudanca_status(
@@ -260,7 +266,8 @@ class OrdemServico:
             raise ValueError(
                 f"Não é possível retornar a OS ao status 'Recebida' a partir de '{self.status.value}'"
             )
-        
+
+        self._validar_transicao(StatusOrdemServico.RECEBIDA)
         self.status = StatusOrdemServico.RECEBIDA
         motivo_registro = motivo or "Retornado ao status inicial para revisão"
         self._registrar_mudanca_status(
