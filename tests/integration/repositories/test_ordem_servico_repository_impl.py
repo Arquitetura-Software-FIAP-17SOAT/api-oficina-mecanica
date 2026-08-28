@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from domain.entities.ordem_servico import OrdemServico
+from domain.value_objects.status_orcamento import StatusOrcamento
 from infrastructure.database.repositories.ordem_servico_repository_impl import (
     OrdemServicoRepositoryImpl,
 )
@@ -62,6 +63,26 @@ async def test_save_persiste_itens_e_atualiza_status(db_session):
     assert len(encontrada.itens) == 1
     assert encontrada.itens[0]["servico_id"] == str(servico.id)
     assert len(encontrada.historico_status) == 3
+
+
+@pytest.mark.asyncio
+async def test_save_persiste_rejeicao_de_orcamento_e_historico(db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+    repository = OrdemServicoRepositoryImpl(db_session)
+    ordem = await repository.save(
+        OrdemServico(veiculo_id=str(veiculo.id), descricao="Revisão completa")
+    )
+    ordem.iniciar_diagnostico()
+    ordem.enviar_para_aprovacao(orcamento=200.0)
+    ordem.rejeitar_orcamento()
+    await repository.save(ordem)
+
+    encontrada = await repository.find_by_id(ordem.id)
+
+    assert encontrada.status_orcamento == StatusOrcamento.REJEITADO
+    assert encontrada.status.value == "Finalizada"
+    assert encontrada.historico_status[-1]["status"].value == "Finalizada"
 
 
 @pytest.mark.asyncio

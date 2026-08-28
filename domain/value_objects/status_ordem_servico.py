@@ -29,6 +29,7 @@ class StatusOrdemServico(str, Enum):
                 StatusOrdemServico.EM_EXECUCAO,
                 StatusOrdemServico.EM_DIAGNOSTICO,  # Cliente não aprovou o orçamento
                 StatusOrdemServico.RECEBIDA,  # Pode voltar para revisar
+                StatusOrdemServico.FINALIZADA,
             ],
             StatusOrdemServico.EM_EXECUCAO: [
                 StatusOrdemServico.FINALIZADA,

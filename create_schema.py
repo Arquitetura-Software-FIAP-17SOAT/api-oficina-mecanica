@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS ordens_servico (
     descricao VARCHAR(1000) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'RECEBIDA',
     orcamento NUMERIC(10,2),
+    status_orcamento VARCHAR(50) NOT NULL DEFAULT 'Pendente',
     observacoes TEXT,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,

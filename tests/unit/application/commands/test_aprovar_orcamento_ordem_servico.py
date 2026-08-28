@@ -7,6 +7,7 @@ from application.commands.aprovar_orcamento_ordem_servico import (
     AprovarOrcamentoOrdemServicoUseCase,
 )
 from domain.entities.ordem_servico import OrdemServico
+from domain.value_objects.status_orcamento import StatusOrcamento
 from domain.value_objects.status_ordem_servico import StatusOrdemServico
 
 
@@ -34,6 +35,7 @@ async def test_evento_de_aprovacao_do_cliente_move_para_em_execucao():
     )
 
     mock_repository.find_by_id.assert_awaited_once_with(1)
+    assert resultado.status_orcamento == StatusOrcamento.APROVADO
     assert resultado.status == StatusOrdemServico.EM_EXECUCAO
     mock_repository.save.assert_awaited_once_with(ordem)
 

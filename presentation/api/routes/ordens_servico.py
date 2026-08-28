@@ -38,6 +38,10 @@ from application.commands.aprovar_orcamento_ordem_servico import (
     AprovarOrcamentoOrdemServicoCommand,
     AprovarOrcamentoOrdemServicoUseCase,
 )
+from application.commands.rejeitar_orcamento_ordem_servico import (
+    RejeitarOrcamentoOrdemServicoCommand,
+    RejeitarOrcamentoOrdemServicoUseCase,
+)
 from application.commands.finalizar_ordem_servico import (
     FinalizarOrdemServicoCommand,
     FinalizarOrdemServicoUseCase,
@@ -80,6 +84,7 @@ from presentation.dependencies.dependencies import (
     get_adicionar_insumo_ordem_servico_use_case,
     get_remover_insumo_ordem_servico_use_case,
     get_aprovar_orcamento_use_case,
+    get_rejeitar_orcamento_use_case,
     get_criar_ordem_servico_use_case,
     get_entregar_ordem_servico_use_case,
     get_enviar_ordem_servico_para_aprovacao_use_case,
@@ -199,6 +204,7 @@ class OrdemServicoResponse(BaseModel):
     descricao: str
     status: str
     orcamento: Optional[float]
+    status_orcamento: str
     observacoes: Optional[str]
     quantidade_servicos: int
 
@@ -278,6 +284,7 @@ class OrdemServicoDetailResponse(BaseModel):
     descricao: str
     status: str
     orcamento: Optional[float]
+    status_orcamento: str
     observacoes: Optional[str]
     cliente: Optional[ClienteResumoResponse]
     veiculo: Optional[VeiculoResumoResponse]
@@ -424,6 +431,7 @@ async def listar_ordens_servico(
                     descricao=str(os.descricao),
                     status=os.status.value,
                     orcamento=os.orcamento,
+                    status_orcamento=os.status_orcamento.value,
                     observacoes=os.observacoes,
                     quantidade_servicos=len(os.itens),
                 )
@@ -547,6 +555,7 @@ def _para_detail_response(
         descricao=str(ordem_servico.descricao),
         status=ordem_servico.status.value,
         orcamento=ordem_servico.orcamento,
+        status_orcamento=ordem_servico.status_orcamento.value,
         observacoes=ordem_servico.observacoes,
         cliente=(
             ClienteResumoResponse(
@@ -987,6 +996,52 @@ async def aprovar_e_executar(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao aprovar execução",
+        )
+
+
+@router.post(
+    "/{ordem_id}/rejeitar-orcamento",
+    response_model=StatusChangeResponse,
+    summary="Rejeitar Orçamento",
+    description="Rejeita o orçamento e move a OS para status 'Finalizada'",
+)
+async def rejeitar_orcamento(
+    ordem_id: int,
+    use_case: RejeitarOrcamentoOrdemServicoUseCase = Depends(
+        get_rejeitar_orcamento_use_case
+    ),
+):
+    """Rejeita o orçamento e encerra a ordem de serviço."""
+    try:
+        ordem_servico = await use_case.execute(
+            RejeitarOrcamentoOrdemServicoCommand(ordem_servico_id=ordem_id)
+        )
+
+        if ordem_servico is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ordem de serviço {ordem_id} não encontrada",
+            )
+
+        return StatusChangeResponse(
+            id=ordem_servico.id,
+            status=ordem_servico.status.value,
+            message="Orçamento rejeitado e ordem de serviço finalizada",
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao rejeitar orçamento",
         )
 
 
