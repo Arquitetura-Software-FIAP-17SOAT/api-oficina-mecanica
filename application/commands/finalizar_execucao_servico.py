@@ -5,12 +5,11 @@ from sqlalchemy import and_
 
 from infrastructure.database.models import OrdemServicoServicoModel, OrdemServicoModel
 from domain.value_objects.status_ordem_servico import StatusOrdemServico
-
-
-def _normalizar_utc(data: datetime) -> datetime:
-    if data.tzinfo is not None:
-        return data.astimezone(UTC).replace(tzinfo=None)
-    return data
+from application.commands.iniciar_execucao_servico import (
+    OrdemServicoNaoEncontradaError,
+    _agora_utc,
+    _normalizar_utc,
+)
 
 
 @dataclass
@@ -45,7 +44,9 @@ class FinalizarExecucaoServicoUseCase:
         ).first()
         
         if not ordem:
-            raise ValueError(f"Ordem de serviço {command.ordem_servico_id} não encontrada")
+            raise OrdemServicoNaoEncontradaError(
+                f"Ordem de serviço {command.ordem_servico_id} não encontrada"
+            )
 
         if ordem.status != StatusOrdemServico.EM_EXECUCAO.value:
             raise ValueError("A ordem de serviço precisa estar em execução")
@@ -77,9 +78,10 @@ class FinalizarExecucaoServicoUseCase:
         
         # Usar a data fornecida ou usar agora em UTC
         data_fim = _normalizar_utc(command.data_fim or datetime.now(UTC))
-        
-        # Validar se data_fim não é no futuro
-        if data_fim > datetime.now():
+
+        # Validar se data_fim não é no futuro — comparando UTC com UTC,
+        # senão o caminho default falharia em servidores fora de UTC
+        if data_fim > _agora_utc():
             raise ValueError("A data de fim não pode ser no futuro")
         
         # Validar se data_fim não é anterior a data_inicio

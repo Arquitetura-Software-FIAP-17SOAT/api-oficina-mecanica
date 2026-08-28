@@ -114,17 +114,48 @@ def test_impede_finalizar_execucao_duas_vezes(client, db_session):
     assert "já foi finalizado" in response.json()["detail"]
 
 
-def test_retorna_erro_para_ordem_inexistente(client, db_session):
+def test_retorna_404_para_ordem_inexistente(client, db_session):
     servico = criar_servico(db_session)
     seed_status_ordem_servico(db_session)
 
-    response = client.post(
+    iniciar = client.post(
         f"/ordens-servico/999/servicos/{servico.id}/iniciar",
         json={},
     )
+    finalizar = client.post(
+        f"/ordens-servico/999/servicos/{servico.id}/finalizar",
+        json={},
+    )
 
-    assert response.status_code == 400
-    assert "não encontrada" in response.json()["detail"]
+    assert iniciar.status_code == 404
+    assert "não encontrada" in iniciar.json()["detail"]
+    assert finalizar.status_code == 404
+    assert "não encontrada" in finalizar.json()["detail"]
+
+
+def test_iniciar_e_finalizar_sem_data_usam_a_hora_atual(client, db_session):
+    """O caminho default (sem data no corpo) deve funcionar em qualquer fuso.
+
+    Regressão: a data era normalizada para UTC naive mas comparada com a hora
+    local naive, então em servidores a oeste de UTC o default sempre caía em
+    "data no futuro".
+    """
+    servico = criar_servico(db_session)
+    ordem_id = _criar_ordem_em_execucao(client, db_session, servico.id)
+
+    inicio = client.post(
+        f"/ordens-servico/{ordem_id}/servicos/{servico.id}/iniciar",
+        json={},
+    )
+    fim = client.post(
+        f"/ordens-servico/{ordem_id}/servicos/{servico.id}/finalizar",
+        json={},
+    )
+
+    assert inicio.status_code == 200
+    assert inicio.json()["data_inicio"] is not None
+    assert fim.status_code == 200
+    assert fim.json()["data_fim"] is not None
 
 
 def test_retorna_erro_para_servico_nao_associado_a_os(client, db_session):
@@ -194,6 +225,65 @@ def test_endpoints_de_execucao_nao_aceitam_patch(client, db_session):
     )
 
     assert response.status_code == 405
+
+
+def test_metricas_tempo_medio_execucao_vazia_sem_execucoes(client, db_session):
+    response = client.get("/ordens-servico/metricas/tempo-medio-execucao")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_metricas_tempo_medio_execucao_exige_autenticacao(
+    client, unauthenticated_client, db_session
+):
+    response = unauthenticated_client.get(
+        "/ordens-servico/metricas/tempo-medio-execucao"
+    )
+
+    assert response.status_code == 401
+
+
+def test_metrica_sobrevive_as_transicoes_seguintes_da_os(client, db_session):
+    """Fluxo normal completo: executa serviço → finaliza OS → entrega.
+
+    Regressão: o ``save`` da OS apagava e regravava os itens sem as colunas
+    ``data_inicio``/``data_fim``, então finalizar a OS destruía a métrica de
+    tempo médio recém-capturada.
+    """
+    servico = criar_servico(db_session)
+    ordem_id = _criar_ordem_em_execucao(client, db_session, servico.id)
+    base = datetime(2025, 1, 15, 10, 0, 0)
+
+    client.post(
+        f"/ordens-servico/{ordem_id}/servicos/{servico.id}/iniciar",
+        json={"data_inicio": base.isoformat()},
+    )
+    client.post(
+        f"/ordens-servico/{ordem_id}/servicos/{servico.id}/finalizar",
+        json={"data_fim": (base + timedelta(hours=2, minutes=30)).isoformat()},
+    )
+
+    assert (
+        client.post(f"/ordens-servico/{ordem_id}/finalizar", json={}).status_code
+        == 200
+    )
+    assert (
+        client.post(f"/ordens-servico/{ordem_id}/entregar", json={}).status_code
+        == 200
+    )
+
+    response = client.get("/ordens-servico/metricas/tempo-medio-execucao")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "servico_id": servico.id,
+            "nome_servico": "Troca de óleo",
+            "tempo_medio_horas": 2.5,
+            "quantidade_execucoes": 1,
+        }
+    ]
 
 
 def test_impede_iniciar_execucao_fora_do_status_em_execucao(client, db_session):

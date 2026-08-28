@@ -7,10 +7,19 @@ from infrastructure.database.models import OrdemServicoServicoModel, OrdemServic
 from domain.value_objects.status_ordem_servico import StatusOrdemServico
 
 
+class OrdemServicoNaoEncontradaError(Exception):
+    """Ordem de serviço não existe — mapeada para 404 na camada de apresentação."""
+
+
 def _normalizar_utc(data: datetime) -> datetime:
     if data.tzinfo is not None:
         return data.astimezone(UTC).replace(tzinfo=None)
     return data
+
+
+def _agora_utc() -> datetime:
+    """Hora atual em UTC naive — a mesma grandeza usada nas datas persistidas."""
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 @dataclass
@@ -44,7 +53,9 @@ class IniciarExecucaoServicoUseCase:
         ).first()
         
         if not ordem:
-            raise ValueError(f"Ordem de serviço {command.ordem_servico_id} não encontrada")
+            raise OrdemServicoNaoEncontradaError(
+                f"Ordem de serviço {command.ordem_servico_id} não encontrada"
+            )
 
         if ordem.status != StatusOrdemServico.EM_EXECUCAO.value:
             raise ValueError("A ordem de serviço precisa estar em execução")
@@ -70,9 +81,10 @@ class IniciarExecucaoServicoUseCase:
         
         # Usar a data fornecida ou usar agora em UTC
         data_inicio = _normalizar_utc(command.data_inicio or datetime.now(UTC))
-        
-        # Validar se data_inicio não é no futuro
-        if data_inicio > datetime.now():
+
+        # Validar se data_inicio não é no futuro — comparando UTC com UTC,
+        # senão o caminho default falharia em servidores fora de UTC
+        if data_inicio > _agora_utc():
             raise ValueError("A data de início não pode ser no futuro")
         
         # Atualizar data_inicio

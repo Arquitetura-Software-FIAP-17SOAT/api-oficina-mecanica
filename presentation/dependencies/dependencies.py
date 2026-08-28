@@ -44,6 +44,9 @@ from application.queries.get_ordem_servico_detalhada import (
     GetOrdemServicoDetalhadaUseCase,
 )
 from application.queries.list_ordens_servico import ListOrdensServicoUseCase
+from application.queries.list_tempo_medio_execucao import (
+    ListTempoMedioExecucaoUseCase,
+)
 from infrastructure.auth.password_hasher import BCryptPasswordHasher
 from infrastructure.database.database import get_db
 from infrastructure.database.repositories.cliente_repository_impl import (
@@ -241,6 +244,16 @@ def get_consultar_ordem_servico_publica_use_case(
 
     return ConsultarOrdemServicoPublicaUseCase(
         get_ordem_servico_detalhada_use_case=get_ordem_servico_detalhada_use_case(db),
+    )
+
+
+def get_list_tempo_medio_execucao_use_case(
+    db=Depends(get_db),
+) -> ListTempoMedioExecucaoUseCase:
+    """Factory do caso de uso de consulta do tempo médio de execução por serviço."""
+
+    return ListTempoMedioExecucaoUseCase(
+        servico_repository=ServicoRepositoryImpl(db),
     )
 
 
