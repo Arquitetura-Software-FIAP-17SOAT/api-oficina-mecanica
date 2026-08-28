@@ -81,6 +81,19 @@ async def test_normaliza_cpf_cnpj_e_placa_com_mascara():
 
 
 @pytest.mark.asyncio
+async def test_normaliza_cnpj_alfanumerico_preservando_letras():
+    mock_repository = AsyncMock()
+    mock_repository.list_paginado.return_value = ([], 0)
+
+    use_case = ListOrdensServicoUseCase(mock_repository)
+    await use_case.execute(ListOrdensServicoQuery(cpf_cnpj="12.abc.345/01de-35"))
+
+    mock_repository.list_paginado.assert_awaited_once_with(
+        skip=0, limit=10, status=None, cpf_cnpj="12ABC34501DE35", placa=None
+    )
+
+
+@pytest.mark.asyncio
 async def test_falha_com_status_invalido():
     mock_repository = AsyncMock()
 
