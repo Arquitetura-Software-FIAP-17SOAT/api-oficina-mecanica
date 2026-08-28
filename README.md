@@ -2,6 +2,24 @@
 
 Projeto de API em Python utilizando FastAPI, DDD e Clean Architecture.
 
+## Banco de dados
+
+O sistema utiliza **PostgreSQL** como banco de dados. A escolha se justifica por:
+
+- **Modelo relacional com integridade referencial**: o domínio da oficina é
+  fortemente relacional (clientes → veículos → ordens de serviço → serviços,
+  peças e histórico de status), e as foreign keys do PostgreSQL garantem a
+  consistência desses vínculos no próprio banco.
+- **Transações ACID**: operações como baixa de estoque ao registrar peças em
+  uma OS e as transições de status com histórico exigem atomicidade e
+  consistência sob concorrência.
+- **Agregações em SQL**: métricas como o tempo médio de execução por serviço
+  são calculadas no próprio banco (`AVG` sobre as janelas de execução), sem
+  trazer os dados para a aplicação.
+- **Maturidade e ecossistema**: é open source, amplamente adotado, com
+  excelente suporte no SQLAlchemy e imagem oficial leve para Docker
+  (`postgres:16-alpine`), o que simplifica o `docker-compose` da entrega.
+
 ## Pré-requisitos
 
 Para executar a aplicação utilizando Docker, é necessário ter instalado:
@@ -23,6 +41,17 @@ Acesse o diretório do projeto:
 cd api-oficina-mecanica
 ```
 
+Configure a chave que assina os tokens JWT — ela é obrigatória e não possui
+valor default (a aplicação não sobe sem ela). Crie um arquivo `.env` a partir
+do exemplo e preencha `JWT_SECRET_KEY` com um valor forte:
+
+```bash
+cp .env.example .env
+# gere um segredo, ex.:
+openssl rand -hex 32
+# e cole o valor em JWT_SECRET_KEY no .env
+```
+
 Suba a aplicação:
 
 ```bash
@@ -36,6 +65,8 @@ O Docker Compose será responsável por subir:
 - Configurações necessárias para comunicação entre a API e o banco de dados
 
 A variável `DATABASE_URL` é configurada automaticamente pelo `docker-compose.yml`.
+As variáveis de autenticação (`JWT_SECRET_KEY`, `JWT_ALGORITHM`,
+`JWT_EXPIRE_MINUTES`) são lidas do `.env` — ver `.env.example`.
 
 ## Como construir
 
