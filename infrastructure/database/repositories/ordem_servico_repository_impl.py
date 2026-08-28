@@ -41,6 +41,7 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
                 descricao=str(ordem_servico.descricao),
                 status=ordem_servico.status.value,
                 orcamento=ordem_servico.orcamento,
+                status_orcamento=ordem_servico.status_orcamento.value,
                 observacoes=ordem_servico.observacoes,
                 data_criacao=ordem_servico.data_criacao,
                 data_atualizacao=ordem_servico.data_atualizacao,
@@ -57,6 +58,7 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
                 model.descricao = str(ordem_servico.descricao)
                 model.status = ordem_servico.status.value
                 model.orcamento = ordem_servico.orcamento
+                model.status_orcamento = ordem_servico.status_orcamento.value
                 model.observacoes = ordem_servico.observacoes
                 model.data_atualizacao = ordem_servico.data_atualizacao
                 
@@ -216,6 +218,12 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
         )
         
         ordem_servico.status = StatusOrdemServico(model.status) if model.status else StatusOrdemServico.RECEBIDA
+        from domain.value_objects.status_orcamento import StatusOrcamento
+        ordem_servico.status_orcamento = (
+            StatusOrcamento(model.status_orcamento)
+            if model.status_orcamento
+            else StatusOrcamento.PENDENTE
+        )
         ordem_servico.data_criacao = model.data_criacao
         ordem_servico.data_atualizacao = model.data_atualizacao
         

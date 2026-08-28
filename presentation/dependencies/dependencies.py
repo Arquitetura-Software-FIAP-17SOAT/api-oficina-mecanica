@@ -24,6 +24,9 @@ from application.commands.enviar_ordem_servico_para_aprovacao import (
 from application.commands.aprovar_orcamento_ordem_servico import (
     AprovarOrcamentoOrdemServicoUseCase,
 )
+from application.commands.rejeitar_orcamento_ordem_servico import (
+    RejeitarOrcamentoOrdemServicoUseCase,
+)
 from application.commands.finalizar_ordem_servico import (
     FinalizarOrdemServicoUseCase,
 )
@@ -179,6 +182,16 @@ def get_aprovar_orcamento_use_case(
     """Factory para injeção de dependências do caso de uso de aprovação do orçamento."""
 
     return AprovarOrcamentoOrdemServicoUseCase(
+        ordem_servico_repository=OrdemServicoRepositoryImpl(db),
+    )
+
+
+def get_rejeitar_orcamento_use_case(
+    db=Depends(get_db),
+) -> RejeitarOrcamentoOrdemServicoUseCase:
+    """Factory para injeção de dependências do caso de uso de rejeição."""
+
+    return RejeitarOrcamentoOrdemServicoUseCase(
         ordem_servico_repository=OrdemServicoRepositoryImpl(db),
     )
 

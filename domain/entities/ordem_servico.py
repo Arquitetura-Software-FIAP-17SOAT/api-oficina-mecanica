@@ -1,5 +1,6 @@
 from datetime import datetime, UTC
 from domain.value_objects.status_ordem_servico import StatusOrdemServico
+from domain.value_objects.status_orcamento import StatusOrcamento
 from domain.value_objects.descricao import Descricao
 
 
@@ -30,6 +31,7 @@ class OrdemServico:
         )
         self.observacoes = observacoes
         self.status = StatusOrdemServico.RECEBIDA
+        self.status_orcamento = StatusOrcamento.PENDENTE
         self.data_criacao = datetime.now(UTC)
         self.data_atualizacao = datetime.now(UTC)
         self.itens = []
@@ -208,10 +210,27 @@ class OrdemServico:
         if not self.itens:
             raise ValueError("A ordem de serviço deve conter pelo menos um serviço")
         
+        self.status_orcamento = StatusOrcamento.APROVADO
         self.status = StatusOrdemServico.EM_EXECUCAO
         self._registrar_mudanca_status(
             StatusOrdemServico.EM_EXECUCAO,
             "Ordem aprovada, iniciando execução"
+        )
+
+    def rejeitar_orcamento(self):
+        """Rejeita o orçamento e encerra a ordem de serviço."""
+        if self.status != StatusOrdemServico.AGUARDANDO_APROVACAO:
+            raise ValueError(
+                "Não é possível rejeitar o orçamento fora do status "
+                f"'{StatusOrdemServico.AGUARDANDO_APROVACAO.value}'"
+            )
+
+        self._validar_transicao(StatusOrdemServico.FINALIZADA)
+        self.status_orcamento = StatusOrcamento.REJEITADO
+        self.status = StatusOrdemServico.FINALIZADA
+        self._registrar_mudanca_status(
+            StatusOrdemServico.FINALIZADA,
+            "Orçamento rejeitado pelo cliente"
         )
 
     def finalizar(self, observacoes: str = None):
@@ -289,6 +308,7 @@ class OrdemServico:
             "veiculo_id": self.veiculo_id,
             "descricao": str(self.descricao),
             "orcamento": self.orcamento,
+            "status_orcamento": self.status_orcamento.value,
             "orcamento_calculado": self.orcamento_calculado,
             "status": self.status.value,
             "status_descricao": StatusOrdemServico.descrever_status(self.status),

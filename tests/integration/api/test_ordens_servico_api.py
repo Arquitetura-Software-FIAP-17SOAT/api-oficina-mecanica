@@ -120,6 +120,28 @@ def test_retornar_para_diagnostico(client, db_session):
     assert response.json()["status"] == "Em diagnóstico"
 
 
+def test_rejeitar_orcamento_finaliza_ordem(client, db_session, auth_headers):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+
+    ordem_id = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+    ).json()["id"]
+    client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
+    client.post(
+        f"/ordens-servico/{ordem_id}/enviar-aprovacao", json={"orcamento": 100.0}
+    )
+
+    response = client.post(f"/ordens-servico/{ordem_id}/rejeitar-orcamento")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "Finalizada"
+    detalhe = client.get(f"/ordens-servico/{ordem_id}", headers=auth_headers).json()
+    assert detalhe["status_orcamento"] == "Rejeitado"
+    assert detalhe["status"] == "Finalizada"
+
+
 def test_criar_ordem_falha_quando_veiculo_nao_existe(client, db_session):
     seed_status_ordem_servico(db_session)
 

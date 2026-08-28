@@ -125,6 +125,7 @@ class OrdemServicoModel(Base):
     descricao = Column(String(1000), nullable=False)
     status = Column(String(50), nullable=False, default="RECEBIDA")
     orcamento = Column(Numeric(10, 2), nullable=True)
+    status_orcamento = Column(String(50), nullable=False, default="Pendente")
     observacoes = Column(Text, nullable=True)
     data_criacao = Column(TIMESTAMP, default=_agora_utc, nullable=False)
     data_atualizacao = Column(TIMESTAMP, default=_agora_utc, onupdate=_agora_utc, nullable=False)

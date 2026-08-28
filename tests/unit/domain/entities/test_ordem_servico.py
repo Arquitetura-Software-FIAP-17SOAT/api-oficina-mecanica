@@ -359,6 +359,20 @@ class TestTransicaoDeStatus:
         with pytest.raises(ValueError, match="pelo menos um serviço"):
             ordem_servico.aprovar_e_iniciar_execucao()
 
+    def test_rejeitar_orcamento_finaliza_e_registra_historico(self, ordem_servico):
+        ordem_servico.iniciar_diagnostico()
+        ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
+
+        ordem_servico.rejeitar_orcamento()
+
+        assert ordem_servico.status == StatusOrdemServico.FINALIZADA
+        assert ordem_servico.status_orcamento.value == "Rejeitado"
+        assert ordem_servico.historico_status[-1]["status"] == StatusOrdemServico.FINALIZADA
+
+    def test_falhar_ao_rejeitar_orcamento_de_status_invalido(self, ordem_servico):
+        with pytest.raises(ValueError, match="Não é possível rejeitar"):
+            ordem_servico.rejeitar_orcamento()
+
     def test_registrar_mudanca_status_no_historico(self, ordem_servico):
         """Deve registrar cada mudança no histórico"""
         assert len(ordem_servico.historico_status) == 1  # Criação
