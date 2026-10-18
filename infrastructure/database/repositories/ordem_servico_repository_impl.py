@@ -1,5 +1,7 @@
+from collections.abc import Sequence
+
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, case
 from domain.entities.ordem_servico import OrdemServico
 from domain.repositories.ordem_servico_repository import OrdemServicoRepository
 from domain.value_objects.status_ordem_servico import StatusOrdemServico
@@ -163,9 +165,14 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
         status: str | None = None,
         cpf_cnpj: str | None = None,
         placa: str | None = None,
+        excluir_status: Sequence[str] = (),
+        prioridade_status: Sequence[str] = (),
     ) -> tuple[list, int]:
         """Lista ordens de serviço com paginação e filtros opcionais"""
         query = self.db.query(OrdemServicoModel)
+
+        if excluir_status:
+            query = query.filter(OrdemServicoModel.status.notin_(excluir_status))
 
         if status:
             query = query.filter(OrdemServicoModel.status == status)
@@ -185,8 +192,17 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
 
         total = query.count()
 
+        ordenacao = [OrdemServicoModel.data_criacao.asc(), OrdemServicoModel.id.asc()]
+        if prioridade_status:
+            posicao = case(
+                {status: i for i, status in enumerate(prioridade_status)},
+                value=OrdemServicoModel.status,
+                else_=len(prioridade_status),
+            )
+            ordenacao.insert(0, posicao)
+
         models = (
-            query.order_by(OrdemServicoModel.id.desc())
+            query.order_by(*ordenacao)
             .offset(skip)
             .limit(limit)
             .all()

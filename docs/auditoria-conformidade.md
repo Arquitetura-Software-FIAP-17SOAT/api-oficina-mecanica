@@ -50,18 +50,6 @@ contador precisa de armazenamento compartilhado (Redis ou equivalente) ou de um 
 
 ## 2. APIs da Fase 2 ainda não atendidas
 
-### 🟠 Listagem de OS: ordenação e exclusão lógica
-`GET /ordens-servico` ordena apenas por `id` decrescente e devolve todas as OS. Falta:
-- ordenar por status `Em execução > Aguardando aprovação > Em diagnóstico > Recebida`;
-- dentro do mesmo status, as mais antigas primeiro;
-- excluir da listagem as OS `Finalizada` e `Entregue` (exclusão lógica, sem apagar do banco).
-
-A exclusão precisa ser uma regra explícita: hoje o filtro `?status=Finalizada` consegue listar
-essas OS. Definir se continua permitido para consulta administrativa ou se passa a ser vedado.
-
-- `infrastructure/database/repositories/ordem_servico_repository_impl.py` (`list_paginado`)
-- `application/queries/list_ordens_servico.py`
-
 ### 🟠 Atualização de status por ferramenta externa (e-mail)
 Não existe nenhum mecanismo de entrada por e-mail ou equivalente. Precisa de decisão de desenho
 (webhook de um provedor, endpoint que recebe o e-mail já parseado, ou fila). Reutilizar o router
@@ -144,8 +132,7 @@ ajuste antes disso:
 ## Ordem sugerida
 
 1. 🔴 Corrigir a configuração do JWT (pré-requisito do `Secret` do Kubernetes).
-2. 🟠 Listagem de OS (ordenação + exclusão lógica), com testes.
-3. 🟠 Entrada de status por e-mail (a aprovação externa já existe em `/integracoes`).
-4. 🟡 Unidade de trabalho para OS + estoque.
-5. 🟡 Refatoração restante das rotas, seeders e scripts da raiz.
-6. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.
+2. 🟠 Entrada de status por e-mail (a aprovação externa já existe em `/integracoes`).
+3. 🟡 Unidade de trabalho para OS + estoque.
+4. 🟡 Refatoração restante das rotas, seeders e scripts da raiz.
+5. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.

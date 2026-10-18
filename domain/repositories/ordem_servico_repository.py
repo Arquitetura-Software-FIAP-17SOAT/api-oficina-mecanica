@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 
 from domain.entities.ordem_servico import OrdemServico
 
@@ -39,8 +40,14 @@ class OrdemServicoRepository(ABC):
         status: str | None = None,
         cpf_cnpj: str | None = None,
         placa: str | None = None,
+        excluir_status: Sequence[str] = (),
+        prioridade_status: Sequence[str] = (),
     ) -> tuple[list, int]:
         """Lista ordens de serviço com paginação e filtros opcionais.
+
+        ``excluir_status`` tira da listagem as OS nesses status (exclusão
+        lógica). ``prioridade_status`` define a ordem dos status, do primeiro
+        ao último; dentro do mesmo status, as mais antigas vêm primeiro.
 
         Filtra por status, pelo CPF/CNPJ (apenas dígitos) do cliente dono do
         veículo e/ou pela placa (normalizada) do veículo.

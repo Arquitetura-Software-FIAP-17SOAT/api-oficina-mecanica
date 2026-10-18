@@ -97,10 +97,15 @@ Verificar o que já existe em `presentation/api/routes/ordens_servico.py` e
       `Em execução`; recusado, a `Finalizada`. Reaproveita os use cases de aprovar/rejeitar.
       No Kubernetes, a chave entra como `Secret`. Testes em
       `tests/integration/api/test_integracoes_api.py`.
-- [ ] **Listagem de ordens de serviço**:
-  - [ ] Ordenar por status: `Execução > Aguardando Aprovação > Diagnóstico > Recebida`.
-  - [ ] Dentro do mesmo status, mais antigas primeiro.
-  - [ ] Excluir da listagem OS `Finalizada`/`Entregue` (exclusão **lógica**, não física).
+- [x] **Listagem de ordens de serviço**:
+  - [x] Ordenar por status: `Execução > Aguardando Aprovação > Diagnóstico > Recebida`.
+  - [x] Dentro do mesmo status, mais antigas primeiro.
+  - [x] Excluir da listagem OS `Finalizada`/`Entregue` (exclusão **lógica**, não física).
+        Feito: a regra vive no domínio (`PRIORIDADE_NA_LISTAGEM` e `STATUS_ENCERRADOS` em
+        `status_ordem_servico.py`), o use case a repassa e o repositório a aplica (`CASE` no
+        `ORDER BY` + `NOT IN`). As OS encerradas seguem no banco e consultáveis por
+        `GET /ordens-servico/{id}`; filtrar `?status=Finalizada` ou `Entregue` devolve lista vazia.
+        Testes em `tests/integration/api/test_listagem_ordens_servico_api.py`.
 - [ ] **Atualização de status da OS** via alguma ferramenta como e-mail.
 
 ## 3. Infraestrutura
