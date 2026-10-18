@@ -1,9 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, UTC
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
 
-from infrastructure.database.models import OrdemServicoServicoModel, OrdemServicoModel
+from domain.repositories.execucao_servico_repository import ExecucaoServicoRepository
 from domain.value_objects.status_ordem_servico import StatusOrdemServico
 from application.commands.iniciar_execucao_servico import (
     OrdemServicoNaoEncontradaError,
@@ -32,38 +30,33 @@ class FinalizarExecucaoServicoUseCase:
     - data_fim não pode ser no futuro
     """
 
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, execucao_repository: ExecucaoServicoRepository):
+        self.execucao_repository = execucao_repository
 
     async def execute(self, command: FinalizarExecucaoServicoCommand) -> dict:
         """Executa o comando e retorna os dados do serviço com a data_fim registrada e tempo calculado."""
         
-        # Validar se ordem de serviço existe
-        ordem = self.db.query(OrdemServicoModel).filter(
-            OrdemServicoModel.id == command.ordem_servico_id
-        ).first()
-        
-        if not ordem:
+        status_ordem = self.execucao_repository.find_status_ordem(
+            command.ordem_servico_id
+        )
+
+        if status_ordem is None:
             raise OrdemServicoNaoEncontradaError(
                 f"Ordem de serviço {command.ordem_servico_id} não encontrada"
             )
 
-        if ordem.status != StatusOrdemServico.EM_EXECUCAO.value:
+        if status_ordem != StatusOrdemServico.EM_EXECUCAO.value:
             raise ValueError("A ordem de serviço precisa estar em execução")
-        
-        # Buscar o item de serviço na ordem
-        item = self.db.query(OrdemServicoServicoModel).filter(
-            and_(
-                OrdemServicoServicoModel.ordem_servico_id == command.ordem_servico_id,
-                OrdemServicoServicoModel.servico_id == command.servico_id,
-            )
-        ).first()
-        
+
+        item = self.execucao_repository.find_execucao(
+            command.ordem_servico_id, command.servico_id
+        )
+
         if not item:
             raise ValueError(
                 f"Serviço {command.servico_id} não encontrado na ordem {command.ordem_servico_id}"
             )
-        
+
         # Validar se serviço foi iniciado
         if item.data_inicio is None:
             raise ValueError(
@@ -90,7 +83,7 @@ class FinalizarExecucaoServicoUseCase:
         
         # Atualizar data_fim
         item.data_fim = data_fim
-        self.db.commit()
+        self.execucao_repository.save(item)
         
         # Calcular tempo de execução em horas
         tempo_execucao = (data_fim - item.data_inicio).total_seconds() / 3600
