@@ -42,35 +42,32 @@ escalabilidade**, incorporando práticas modernas de infraestrutura e automaçã
 
 - [x] **Clean Code** (nomes claros, simplicidade, coesão): revisar os módulos existentes
       (`application/`, `domain/`, `adapters/`, `presentation/`).
-      Feito: `presentation/api/routes/ordens_servico.py` (1333 → 1002 linhas) deixou de repetir
-      `try/except` e o 404 em cada endpoint; passou a usar `presentation/api/error_handling.py`
-      (`traduzir_erros`, `ordem_servico_ou_404`) e helpers de conversão de resposta.
+      Feito: erros e 404 das rotas centralizados em `presentation/api/error_handling.py`
+      (`traduzir_erros`, `traduzir_value_error`, `encontrado_ou_404`, `exclusao_ou_404`); schemas e
+      conversores de OS e insumos em `presentation/api/schemas/` e `presentation/api/mappers/`
+      (`ordens_servico.py` foi de 1333 para 731 linhas, `insumos.py` de 437 para 251); seeders
+      sem duplicação e scripts fora da raiz (`python -m adapters.database.seeders.executar`).
 - [x] **Clean Architecture / Arquitetura Hexagonal** (separação adequada de camadas e
       dependências): confirmar que as camadas já separadas
       (`domain` → `application` → `adapters`/`presentation`) não têm dependências invertidas
       (ex.: `domain` importando de `adapters`).
-      Feito: `domain` não importa nada fora de si; `application` só importa `domain` e suas
-      portas (`application/ports`: `PasswordHasher`, `TokenGenerator`; repositórios em
-      `domain/repositories`). Os 3 use cases que usavam SQLAlchemy direto passaram a usar
-      repositórios. `adapters` implementa as portas; `presentation` só toca
-      `adapters` em `presentation/dependencies` (composição). A regra é garantida por
-      `tests/unit/test_arquitetura.py`.
-- [x] **Testes automatizados**: já há suíte em `tests/` (614 testes, 99% de cobertura de
-      `application/` + `presentation/`) — validar que os fluxos críticos da Fase 2 (abaixo) também
-      ficam cobertos.
-      Feito: fluxos já existentes (abertura de OS, consulta de status, aprovação/rejeição de
-      orçamento, execução de serviço, consulta pública) estão cobertos por testes de API e de
-      use case; lacunas fechadas em `finalizar_execucao_servico` e `error_handling`, e a regra de
-      camadas tem teste próprio. **Pendente:** ordenação por status/antiguidade e exclusão lógica
-      de `Finalizada`/`Entregue` na listagem (seção 2) ainda não existem — os testes devem ser
-      escritos junto com essa implementação.
+      Feito: `domain` não importa nada fora de si; `application` só importa `domain` e as suas
+      portas (`application/ports`: `PasswordHasher`, `TokenGenerator`, `TokenDecoder`,
+      `UnitOfWork`; repositórios em `domain/repositories`). `adapters` (antes `infrastructure`)
+      implementa as portas; `presentation` só toca `adapters` nos arquivos de composição de
+      `presentation/dependencies`. A regra é garantida por `tests/unit/test_arquitetura.py`.
+- [x] **Testes automatizados**: suíte em `tests/` com 698 testes e 99% de cobertura nos quatro
+      pacotes — fluxos críticos da Fase 2 cobertos.
+      Feito: abertura de OS (inclusive atomicidade com o estoque), consulta de status, aprovação e
+      atualização de status por sistema externo, listagem ordenada com exclusão lógica, execução de
+      serviço e consulta pública têm testes de API e de caso de uso; a regra de camadas e a de
+      schemas fora das rotas têm teste próprio.
 
 ## 2. APIs — alterar/criar
 
 Enunciado: refatorar o código da Fase 1 (seção 1) e alterar/criar as APIs abaixo.
 
-Verificar o que já existe em `presentation/api/routes/ordens_servico.py` e
-`consulta_publica.py` antes de implementar — grande parte pode já estar coberta pela Fase 1.
+Parte destes itens já estava coberta pela Fase 1; abaixo, o que foi feito em cada um.
 
 - [x] **Abertura de OS**: recebe os dados do cliente, veículo, serviços e peças; retorna a
       identificação única da OS.
