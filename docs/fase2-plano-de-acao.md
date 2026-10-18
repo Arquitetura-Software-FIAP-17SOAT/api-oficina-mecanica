@@ -27,9 +27,15 @@ qualidade/arquitetura do código e infraestrutura.
       repositórios. `infrastructure` implementa as portas; `presentation` só toca
       `infrastructure` em `presentation/dependencies` (composição). A regra é garantida por
       `tests/unit/test_arquitetura.py`.
-- [ ] **Testes automatizados**: já há suíte em `tests/` (573 testes, 97% cobertura por
-      `auditoria-conformidade.md`) — validar que os fluxos críticos da Fase 2 (abaixo) também
+- [x] **Testes automatizados**: já há suíte em `tests/` (614 testes, 99% de cobertura de
+      `application/` + `presentation/`) — validar que os fluxos críticos da Fase 2 (abaixo) também
       ficam cobertos.
+      Feito: fluxos já existentes (abertura de OS, consulta de status, aprovação/rejeição de
+      orçamento, execução de serviço, consulta pública) estão cobertos por testes de API e de
+      use case; lacunas fechadas em `finalizar_execucao_servico` e `error_handling`, e a regra de
+      camadas tem teste próprio. **Pendente:** ordenação por status/antiguidade e exclusão lógica
+      de `Finalizada`/`Entregue` na listagem (seção 2) ainda não existem — os testes devem ser
+      escritos junto com essa implementação.
 
 ## 2. APIs — alterar/criar
 
