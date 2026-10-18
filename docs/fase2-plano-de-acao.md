@@ -159,7 +159,7 @@ Pipeline de CI/CD configurada (GitHub Actions, GitLab CI, etc.) que execute:
       manifestos Kubernetes em `/k8s`, scripts Terraform em `/infra` e arquivos de configuração da
       pipeline CI/CD.
 - [ ] `README.md` atualizado com:
-  - [x] Descrição da solução e objetivos da fase (README: "Objetivos das fases" e "Estado da
+  - [x] Descrição da solução e objetivos da fase (README: "Objetivos" e "Estado da
         Fase 2").
   - [ ] Desenho da arquitetura proposta, incluindo: componentes da aplicação, infraestrutura
         provisionada e fluxo de deploy. (Componentes da aplicação: README, "Arquitetura"; faltam a
