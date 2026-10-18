@@ -33,18 +33,12 @@ corrigidos está no `git log`. Abaixo do resumo ficam **apenas os pontos em aber
 
 ## 1. Segurança
 
-### 🟡 Cadastro de usuários aberto
-`POST /users/register` é público e qualquer usuário cadastrado recebe, no login, um JWT que vale
-para todas as rotas administrativas: não há conceito de perfil/administrador. Na prática, a
-autenticação JWT existe, mas qualquer visitante pode obtê-la. Opções: exigir autenticação (ou um
-perfil de administrador) para cadastrar usuários, ou criar o primeiro usuário só por seed. O
-enunciado pede "autenticação JWT para APIs administrativas" e não detalha o cadastro; decidir e
-documentar.
-
-### 🟡 Chave de integração sem esquema de segurança no Swagger
-`INTEGRACAO_API_KEY` já é repassada ao container pelo `docker-compose.yml`. No Swagger, a chave
-aparece como parâmetro de cabeçalho, sem o cadeado de segurança; declarar um esquema `APIKeyHeader`
-melhora a documentação (opcional).
+### 🟡 Cadastro de usuários aberto — decisão: documentar
+`POST /users/register` é público e todo usuário cadastrado recebe um JWT que vale para todas as
+rotas administrativas (não há perfis). **Decisão:** manter e documentar a limitação no README
+("Limitações conhecidas"), por ser um trabalho acadêmico e o enunciado não pedir controle de
+perfis. Se for preciso fechar: exigir um código de cadastro (`X-API-Key`, esforço baixo) ou criar
+perfis administrador/cliente (esforço alto, altera o schema de `usuarios`).
 
 ### 🟡 Sem rate limiting na consulta pública
 `POST /consulta/ordens-servico` é público (número da OS + CPF/CNPJ); sem limite de tentativas a
@@ -120,5 +114,4 @@ CI/CD. Ajustes no que já existe, antes disso:
 
 ## Ordem sugerida
 
-1. 🟡 Decidir o cadastro de usuários aberto.
-2. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.
+1. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.

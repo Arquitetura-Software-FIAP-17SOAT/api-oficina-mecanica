@@ -80,8 +80,9 @@ práticas de **Qualidade de Software** e **Segurança**.
 
 - [x] Autenticação JWT nas APIs administrativas.
       Verificado: 41 das 47 operações exigem JWT; as públicas são `register`, `login`, a consulta do
-      cliente, `/health` e as de `/integracoes` (chave de API). Ressalva na auditoria (seção 1): o
-      cadastro de usuários aberto. A chave JWT é lida do ambiente e é obrigatória.
+      cliente, `/health` e as de `/integracoes` (chave de API). Ressalva (README, "Limitações
+      conhecidas"): o cadastro de usuários é aberto, sem perfis. A chave JWT é lida do ambiente e é
+      obrigatória.
 - [x] Validação de dados sensíveis (CPF/CNPJ, placa de veículo).
 - [x] Testes unitários e de integração para os principais fluxos.
       Verificado: 698 testes, cobertura de 99% nos quatro pacotes.
