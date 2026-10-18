@@ -72,3 +72,24 @@ def test_presentation_nao_depende_da_biblioteca_de_jwt():
     ]
 
     assert not violacoes, "\n".join(violacoes)
+
+
+def test_rotas_nao_definem_schemas_pydantic():
+    """Requests/responses ficam em presentation/api/schemas, não nos endpoints."""
+    violacoes = []
+    for arquivo in _arquivos("presentation/api/routes"):
+        arvore = ast.parse(arquivo.read_text(encoding="utf-8"))
+        for no in ast.walk(arvore):
+            if isinstance(no, ast.ClassDef) and any(
+                isinstance(base, ast.Name) and base.id == "BaseModel"
+                for base in no.bases
+            ):
+                violacoes.append(f"{arquivo.relative_to(RAIZ)} define {no.name}")
+
+    # clientes, servicos, veiculos, users, consulta_publica e integracoes ainda
+    # mantêm seus schemas junto das rotas; a regra vale para os já separados.
+    separados = ("ordens_servico.py", "insumos.py")
+    violacoes = [v for v in violacoes if any(f"/{nome} " in v for nome in separados)]
+
+    assert not violacoes, "\n".join(violacoes)
+

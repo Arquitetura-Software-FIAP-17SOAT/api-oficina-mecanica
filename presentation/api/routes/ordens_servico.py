@@ -1,7 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import APIRouter, Depends, Query, status
 from typing import Optional
-from datetime import datetime
 
 from application.commands.criar_ordem_servico import (
     CriarOrdemServicoCommand,
@@ -67,8 +65,6 @@ from application.commands.finalizar_execucao_servico import (
 )
 from application.queries.get_ordem_servico_detalhada import (
     GetOrdemServicoDetalhadaUseCase,
-    InsumoUtilizadoDetalhado,
-    ItemServicoDetalhado,
     OrdemServicoDetalhada,
 )
 from application.queries.list_ordens_servico import (
@@ -80,6 +76,33 @@ from application.queries.list_tempo_medio_execucao import (
     ListTempoMedioExecucaoUseCase,
 )
 from presentation.api.error_handling import ordem_servico_ou_404, traduzir_erros
+from presentation.api.mappers.ordens_servico import (
+    para_detail_response,
+    para_execucao_response,
+    parse_data_iso,
+    resposta_status,
+)
+from presentation.api.schemas.ordens_servico import (
+    AdicionarInsumoRequest,
+    AdicionarItemRequest,
+    CriarOrdemServicoRequest,
+    CriarOrdemServicoResponse,
+    EntregarOSRequest,
+    EnviarParaAprovacaoRequest,
+    ExecucaoServicoResponse,
+    FinalizarExecucaoRequest,
+    FinalizarOSRequest,
+    IniciarDiagnosticoRequest,
+    IniciarExecucaoRequest,
+    OrdemServicoDetailResponse,
+    OrdemServicoResponse,
+    OrdensServicoPaginadasResponse,
+    RemoverInsumoRequest,
+    RemoverItemRequest,
+    RetornarDiagnosticoRequest,
+    StatusChangeResponse,
+    TempoMedioExecucaoResponse,
+)
 from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.dependencies import (
     get_adicionar_item_ordem_servico_use_case,
@@ -106,350 +129,6 @@ router = APIRouter(
     tags=["Ordens de Serviço"],
     dependencies=[Depends(get_current_user)],
 )
-
-
-# ==================== Requests ====================
-
-class ServicoSolicitadoRequest(BaseModel):
-    """Serviço do catálogo solicitado na abertura da OS"""
-    servico_id: str = Field(..., description="ID do serviço")
-    quantidade: int = Field(1, description="Quantidade")
-
-
-class InsumoSolicitadoRequest(BaseModel):
-    """Peça/insumo solicitado na abertura da OS"""
-    insumo_id: int = Field(..., description="ID do insumo")
-    quantidade: int = Field(1, description="Quantidade")
-
-
-class CriarOrdemServicoRequest(BaseModel):
-    """Request para criar uma nova ordem de serviço"""
-    veiculo_id: str = Field(..., description="ID do veículo")
-    cliente_id: Optional[int] = Field(
-        None,
-        description=(
-            "ID do cliente. Opcional: o cliente é o dono do veículo; se informado, "
-            "precisa ser o dono do veículo."
-        ),
-    )
-    servicos: list[ServicoSolicitadoRequest] = Field(
-        default_factory=list, description="Serviços a executar"
-    )
-    insumos: list[InsumoSolicitadoRequest] = Field(
-        default_factory=list,
-        description="Peças/insumos a usar (dão baixa no estoque)",
-    )
-    descricao: str = Field(..., description="Descrição da ordem de serviço")
-    orcamento: Optional[float] = Field(None, description="Orçamento estimado")
-    observacoes: Optional[str] = Field(None, description="Observações adicionais")
-
-
-class IniciarDiagnosticoRequest(BaseModel):
-    """Request para iniciar diagnóstico"""
-    observacoes: Optional[str] = Field(None, description="Observações do diagnóstico")
-
-
-class EnviarParaAprovacaoRequest(BaseModel):
-    """Request para enviar para aprovação"""
-    orcamento: Optional[float] = Field(
-        None,
-        description=(
-            "Orçamento a ser aprovado pelo cliente. Se omitido, é gerado "
-            "automaticamente a partir dos serviços adicionados à OS. "
-            "Informe um valor para aplicar desconto ou acréscimo sobre o total."
-        ),
-        examples=[350.00],
-    )
-    observacoes: Optional[str] = Field(None, description="Observações")
-
-
-class AdicionarItemRequest(BaseModel):
-    """Request para adicionar serviço à ordem"""
-    servico_id: str = Field(..., description="ID do serviço")
-    quantidade: int = Field(1, description="Quantidade")
-
-
-class RemoverItemRequest(BaseModel):
-    """Request para remover serviço da ordem"""
-    servico_id: str = Field(..., description="ID do serviço a remover")
-
-
-class AdicionarInsumoRequest(BaseModel):
-    """Request para registrar uma peça/insumo avulso usado na ordem"""
-    insumo_id: int = Field(..., description="ID do insumo")
-    quantidade: int = Field(1, description="Quantidade consumida")
-
-
-class RemoverInsumoRequest(BaseModel):
-    """Request para remover um insumo avulso da ordem"""
-    insumo_id: int = Field(..., description="ID do insumo a remover")
-
-
-class FinalizarOSRequest(BaseModel):
-    """Request para finalizar OS"""
-    observacoes: Optional[str] = Field(None, description="Observações finais")
-
-
-class EntregarOSRequest(BaseModel):
-    """Request para entregar OS"""
-    observacoes: Optional[str] = Field(None, description="Observações na entrega")
-
-
-class RetornarDiagnosticoRequest(BaseModel):
-    """Request para retornar para diagnóstico"""
-    motivo: Optional[str] = Field(None, description="Motivo da devolução")
-
-
-class IniciarExecucaoRequest(BaseModel):
-    """Request para iniciar a execução de um serviço"""
-    data_inicio: Optional[str] = Field(
-        None,
-        description="Data e hora de início (ISO 8601). Se omitida, usa a hora atual.",
-        examples=["2025-01-15T10:30:00Z"],
-    )
-
-
-class FinalizarExecucaoRequest(BaseModel):
-    """Request para finalizar a execução de um serviço"""
-    data_fim: Optional[str] = Field(
-        None,
-        description="Data e hora de término (ISO 8601). Se omitida, usa a hora atual.",
-        examples=["2025-01-15T12:30:00Z"],
-    )
-
-# ==================== Responses ====================
-
-class OrdemServicoResponse(BaseModel):
-    """Response com os dados da ordem de serviço"""
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    veiculo_id: str
-    descricao: str
-    status: str
-    orcamento: Optional[float]
-    status_orcamento: str
-    observacoes: Optional[str]
-    quantidade_servicos: int
-
-
-class CriarOrdemServicoResponse(BaseModel):
-    """Response para criação de ordem de serviço"""
-    id: int
-    veiculo_id: str
-    descricao: str
-    status: str
-    quantidade_servicos: int = 0
-    quantidade_insumos: int = 0
-    message: str = "Ordem de serviço criada com sucesso"
-
-
-class StatusChangeResponse(BaseModel):
-    """Response para mudança de status"""
-    id: int
-    status: str
-    message: str
-
-
-class ClienteResumoResponse(BaseModel):
-    """Dados do cliente dono do veículo atendido pela OS"""
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    nome: str
-    cpf_cnpj: Optional[str] = None
-    email: Optional[str] = None
-
-
-class VeiculoResumoResponse(BaseModel):
-    """Dados do veículo atendido pela OS"""
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    placa: str
-    modelo: str
-    marca_id: int
-    ano_fabricacao: Optional[int] = None
-
-
-class InsumoResumoResponse(BaseModel):
-    """Peça/insumo consumido por um serviço da OS"""
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    nome: str
-    estoque: int
-
-
-class ServicoItemResponse(BaseModel):
-    """Um serviço adicionado à OS, com as peças que ele consome"""
-
-    servico_id: str
-    nome: Optional[str] = None
-    quantidade: int
-    valor_unitario: float
-    valor_total: float
-    insumos: list[InsumoResumoResponse] = Field(default_factory=list)
-
-
-class InsumoUtilizadoResponse(BaseModel):
-    """Uma peça/insumo avulso registrado diretamente na OS"""
-
-    insumo_id: str
-    nome: Optional[str] = None
-    quantidade: int
-    valor_unitario: float
-    valor_total: float
-
-
-class OrdemServicoDetailResponse(BaseModel):
-    """Response detalhada de uma ordem de serviço"""
-
-    id: int
-    veiculo_id: str
-    descricao: str
-    status: str
-    orcamento: Optional[float]
-    status_orcamento: str
-    observacoes: Optional[str]
-    cliente: Optional[ClienteResumoResponse]
-    veiculo: Optional[VeiculoResumoResponse]
-    itens: list[ServicoItemResponse]
-    insumos_utilizados: list[InsumoUtilizadoResponse]
-    valor_total_itens: float
-
-
-class OrdensServicoPaginadasResponse(BaseModel):
-    """Response paginada da listagem de ordens de serviço"""
-
-    itens: list[OrdemServicoResponse]
-    total: int
-    page: int
-    page_size: int
-    total_paginas: int
-
-
-class ExecucaoServicoResponse(BaseModel):
-    """Response para operações de execução de serviço (início e fim)"""
-    ordem_servico_id: int
-    servico_id: int
-    data_inicio: Optional[str]
-    data_fim: Optional[str]
-    tempo_execucao_horas: Optional[float] = None
-    mensagem: str
-
-
-class TempoMedioExecucaoResponse(BaseModel):
-    """Tempo médio das execuções concluídas de um serviço"""
-    servico_id: int
-    nome_servico: str
-    tempo_medio_horas: float
-    quantidade_execucoes: int
-
-
-# ==================== Helpers ====================
-
-def _resposta_status(ordem_servico, message: str) -> StatusChangeResponse:
-    return StatusChangeResponse(
-        id=ordem_servico.id,
-        status=ordem_servico.status.value,
-        message=message,
-    )
-
-
-def _parse_data_iso(valor: Optional[str]) -> Optional[datetime]:
-    if not valor:
-        return None
-    return datetime.fromisoformat(valor.replace("Z", "+00:00"))
-
-
-def _isoformat_ou_none(valor: Optional[datetime]) -> Optional[str]:
-    return valor.isoformat() if valor else None
-
-
-def _para_execucao_response(resultado: dict) -> ExecucaoServicoResponse:
-    return ExecucaoServicoResponse(
-        ordem_servico_id=resultado["ordem_servico_id"],
-        servico_id=resultado["servico_id"],
-        data_inicio=_isoformat_ou_none(resultado["data_inicio"]),
-        data_fim=_isoformat_ou_none(resultado["data_fim"]),
-        tempo_execucao_horas=resultado.get("tempo_execucao_horas"),
-        mensagem=resultado["mensagem"],
-    )
-
-
-def _para_detail_response(
-    detalhe: OrdemServicoDetalhada,
-) -> OrdemServicoDetailResponse:
-    ordem_servico = detalhe.ordem_servico
-
-    return OrdemServicoDetailResponse(
-        id=ordem_servico.id,
-        veiculo_id=ordem_servico.veiculo_id,
-        descricao=str(ordem_servico.descricao),
-        status=ordem_servico.status.value,
-        orcamento=ordem_servico.orcamento,
-        status_orcamento=ordem_servico.status_orcamento.value,
-        observacoes=ordem_servico.observacoes,
-        cliente=(
-            ClienteResumoResponse(
-                id=detalhe.cliente.id,
-                nome=detalhe.cliente.nome,
-                cpf_cnpj=(
-                    str(detalhe.cliente.cpf_cnpj)
-                    if detalhe.cliente.cpf_cnpj
-                    else None
-                ),
-                email=str(detalhe.cliente.email) if detalhe.cliente.email else None,
-            )
-            if detalhe.cliente
-            else None
-        ),
-        veiculo=(
-            VeiculoResumoResponse(
-                id=detalhe.veiculo.id,
-                placa=str(detalhe.veiculo.placa),
-                modelo=detalhe.veiculo.modelo,
-                marca_id=detalhe.veiculo.marca_id,
-                ano_fabricacao=detalhe.veiculo.ano_fabricacao,
-            )
-            if detalhe.veiculo
-            else None
-        ),
-        itens=[_para_item_response(item) for item in detalhe.itens],
-        insumos_utilizados=[
-            _para_insumo_utilizado_response(item)
-            for item in detalhe.insumos_utilizados
-        ],
-        valor_total_itens=detalhe.valor_total_itens,
-    )
-
-
-def _para_item_response(item: ItemServicoDetalhado) -> ServicoItemResponse:
-    return ServicoItemResponse(
-        servico_id=item.servico_id,
-        nome=item.servico.nome if item.servico else None,
-        quantidade=item.quantidade,
-        valor_unitario=item.valor_unitario,
-        valor_total=item.valor_total,
-        insumos=[
-            InsumoResumoResponse(id=insumo.id, nome=insumo.nome, estoque=insumo.estoque)
-            for insumo in item.insumos
-        ],
-    )
-
-
-def _para_insumo_utilizado_response(
-    item: InsumoUtilizadoDetalhado,
-) -> InsumoUtilizadoResponse:
-    return InsumoUtilizadoResponse(
-        insumo_id=item.insumo_id,
-        nome=item.insumo.nome if item.insumo else None,
-        quantidade=item.quantidade,
-        valor_unitario=item.valor_unitario,
-        valor_total=item.valor_total,
-    )
-
 
 # ==================== Endpoints ====================
 
@@ -634,7 +313,7 @@ async def obter_ordem_servico(
     with traduzir_erros("Erro ao obter ordem de serviço"):
         detalhe: OrdemServicoDetalhada | None = await use_case.execute(ordem_id)
 
-        return _para_detail_response(ordem_servico_ou_404(detalhe, ordem_id))
+        return para_detail_response(ordem_servico_ou_404(detalhe, ordem_id))
 
 
 @router.post(
@@ -662,7 +341,7 @@ async def iniciar_diagnostico(
             ordem_id,
         )
 
-        return _resposta_status(ordem_servico, "Diagnóstico iniciado com sucesso")
+        return resposta_status(ordem_servico, "Diagnóstico iniciado com sucesso")
 
 
 @router.post(
@@ -691,7 +370,7 @@ async def enviar_para_aprovacao(
             ordem_id,
         )
 
-        return _resposta_status(
+        return resposta_status(
             ordem_servico,
             f"Ordem enviada para aprovação. Orçamento: R$ {ordem_servico.orcamento:.2f}",
         )
@@ -725,7 +404,7 @@ async def adicionar_item(
             ordem_id,
         )
 
-        return _resposta_status(
+        return resposta_status(
             ordem_servico,
             f"Serviço adicionado. Total de serviços: {len(ordem_servico.itens)}",
         )
@@ -756,7 +435,7 @@ async def remover_item(
             ordem_id,
         )
 
-        return _resposta_status(
+        return resposta_status(
             ordem_servico,
             f"Serviço removido. Total de serviços: {len(ordem_servico.itens)}",
         )
@@ -793,7 +472,7 @@ async def adicionar_insumo(
             ordem_id,
         )
 
-        return _resposta_status(
+        return resposta_status(
             ordem_servico,
             f"Insumo adicionado. Total de insumos: {len(ordem_servico.insumos_utilizados)}",
         )
@@ -827,7 +506,7 @@ async def remover_insumo(
             ordem_id,
         )
 
-        return _resposta_status(
+        return resposta_status(
             ordem_servico,
             f"Insumo removido. Total de insumos: {len(ordem_servico.insumos_utilizados)}",
         )
@@ -860,7 +539,7 @@ async def aprovar_e_executar(
             ordem_id,
         )
 
-        return _resposta_status(ordem_servico, "Ordem aprovada e execução iniciada")
+        return resposta_status(ordem_servico, "Ordem aprovada e execução iniciada")
 
 
 @router.post(
@@ -884,7 +563,7 @@ async def rejeitar_orcamento(
             ordem_id,
         )
 
-        return _resposta_status(
+        return resposta_status(
             ordem_servico, "Orçamento rejeitado e ordem de serviço finalizada"
         )
 
@@ -914,7 +593,7 @@ async def finalizar(
             ordem_id,
         )
 
-        return _resposta_status(ordem_servico, "Ordem finalizada com sucesso")
+        return resposta_status(ordem_servico, "Ordem finalizada com sucesso")
 
 
 @router.post(
@@ -942,7 +621,7 @@ async def entregar(
             ordem_id,
         )
 
-        return _resposta_status(ordem_servico, "Ordem entregue com sucesso")
+        return resposta_status(ordem_servico, "Ordem entregue com sucesso")
 
 
 @router.post(
@@ -970,7 +649,7 @@ async def retornar_diagnostico(
             ordem_id,
         )
 
-        return _resposta_status(ordem_servico, "Ordem retornada para diagnóstico")
+        return resposta_status(ordem_servico, "Ordem retornada para diagnóstico")
 
 
 @router.post(
@@ -1004,11 +683,11 @@ async def iniciar_execucao_servico(
             IniciarExecucaoServicoCommand(
                 ordem_servico_id=ordem_id,
                 servico_id=servico_id,
-                data_inicio=_parse_data_iso(request.data_inicio),
+                data_inicio=parse_data_iso(request.data_inicio),
             )
         )
 
-        return _para_execucao_response(resultado)
+        return para_execucao_response(resultado)
 
 
 @router.post(
@@ -1045,8 +724,8 @@ async def finalizar_execucao_servico(
             FinalizarExecucaoServicoCommand(
                 ordem_servico_id=ordem_id,
                 servico_id=servico_id,
-                data_fim=_parse_data_iso(request.data_fim),
+                data_fim=parse_data_iso(request.data_fim),
             )
         )
 
-        return _para_execucao_response(resultado)
+        return para_execucao_response(resultado)
