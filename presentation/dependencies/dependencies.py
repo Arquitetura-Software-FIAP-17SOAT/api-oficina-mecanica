@@ -50,28 +50,28 @@ from application.queries.list_ordens_servico import ListOrdensServicoUseCase
 from application.queries.list_tempo_medio_execucao import (
     ListTempoMedioExecucaoUseCase,
 )
-from infrastructure.auth.jwt_token_generator import JWTTokenGenerator
-from infrastructure.auth.password_hasher import BCryptPasswordHasher
-from infrastructure.database.database import get_db
-from infrastructure.database.repositories.cliente_repository_impl import (
+from adapters.auth.jwt_token_generator import JWTTokenGenerator
+from adapters.auth.password_hasher import BCryptPasswordHasher
+from adapters.database.database import get_db
+from adapters.database.repositories.cliente_repository_impl import (
     ClienteRepositoryImpl,
 )
-from infrastructure.database.repositories.execucao_servico_repository_impl import (
+from adapters.database.repositories.execucao_servico_repository_impl import (
     ExecucaoServicoRepositoryImpl,
 )
-from infrastructure.database.repositories.insumo_repository_impl import (
+from adapters.database.repositories.insumo_repository_impl import (
     InsumoRepositoryImpl,
 )
-from infrastructure.database.repositories.servico_repository_impl import (
+from adapters.database.repositories.servico_repository_impl import (
     ServicoRepositoryImpl,
 )
-from infrastructure.database.repositories.user_repository_impl import (
+from adapters.database.repositories.user_repository_impl import (
     UserRepositoryImpl,
 )
-from infrastructure.database.repositories.veiculo_repository_impl import (
+from adapters.database.repositories.veiculo_repository_impl import (
     VeiculoRepositoryImpl,
 )
-from infrastructure.database.repositories.ordem_servico_repository_impl import (
+from adapters.database.repositories.ordem_servico_repository_impl import (
     OrdemServicoRepositoryImpl,
 )
 

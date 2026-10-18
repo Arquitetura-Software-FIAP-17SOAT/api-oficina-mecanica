@@ -2,6 +2,16 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+REGRAS_DA_LISTAGEM = {
+    "excluir_status": ["Finalizada", "Entregue"],
+    "prioridade_status": [
+        "Em execução",
+        "Aguardando aprovação",
+        "Em diagnóstico",
+        "Recebida",
+    ],
+}
+
 from application.queries.list_ordens_servico import (
     ListOrdensServicoQuery,
     ListOrdensServicoUseCase,
@@ -18,7 +28,7 @@ async def test_lista_com_paginacao_padrao():
     resultado = await use_case.execute(ListOrdensServicoQuery())
 
     mock_repository.list_paginado.assert_awaited_once_with(
-        skip=0, limit=10, status=None, cpf_cnpj=None, placa=None
+        skip=0, limit=10, status=None, cpf_cnpj=None, placa=None, **REGRAS_DA_LISTAGEM
     )
     assert resultado.page == 1
     assert resultado.page_size == 10
@@ -35,7 +45,7 @@ async def test_calcula_skip_a_partir_da_pagina():
     )
 
     mock_repository.list_paginado.assert_awaited_once_with(
-        skip=20, limit=10, status=None, cpf_cnpj=None, placa=None
+        skip=20, limit=10, status=None, cpf_cnpj=None, placa=None, **REGRAS_DA_LISTAGEM
     )
     assert resultado.total_paginas == 3
 
@@ -49,7 +59,7 @@ async def test_pagina_minima_e_um():
     await use_case.execute(ListOrdensServicoQuery(page=0, page_size=0))
 
     mock_repository.list_paginado.assert_awaited_once_with(
-        skip=0, limit=1, status=None, cpf_cnpj=None, placa=None
+        skip=0, limit=1, status=None, cpf_cnpj=None, placa=None, **REGRAS_DA_LISTAGEM
     )
 
 
@@ -76,7 +86,7 @@ async def test_normaliza_cpf_cnpj_e_placa_com_mascara():
     )
 
     mock_repository.list_paginado.assert_awaited_once_with(
-        skip=0, limit=10, status=None, cpf_cnpj="52998224725", placa="ABC1D23"
+        skip=0, limit=10, status=None, cpf_cnpj="52998224725", placa="ABC1D23", **REGRAS_DA_LISTAGEM
     )
 
 
@@ -89,7 +99,7 @@ async def test_normaliza_cnpj_alfanumerico_preservando_letras():
     await use_case.execute(ListOrdensServicoQuery(cpf_cnpj="12.abc.345/01de-35"))
 
     mock_repository.list_paginado.assert_awaited_once_with(
-        skip=0, limit=10, status=None, cpf_cnpj="12ABC34501DE35", placa=None
+        skip=0, limit=10, status=None, cpf_cnpj="12ABC34501DE35", placa=None, **REGRAS_DA_LISTAGEM
     )
 
 
@@ -114,7 +124,7 @@ async def test_aceita_status_valido():
     await use_case.execute(ListOrdensServicoQuery(status="Recebida"))
 
     mock_repository.list_paginado.assert_awaited_once_with(
-        skip=0, limit=10, status="Recebida", cpf_cnpj=None, placa=None
+        skip=0, limit=10, status="Recebida", cpf_cnpj=None, placa=None, **REGRAS_DA_LISTAGEM
     )
 
 

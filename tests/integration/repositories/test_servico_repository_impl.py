@@ -4,12 +4,12 @@ from decimal import Decimal
 import pytest
 
 from domain.entities.servico import Servico
-from infrastructure.database.models import (
+from adapters.database.models import (
     OrdemServicoModel,
     OrdemServicoServicoModel,
     ServicoInsumoModel,
 )
-from infrastructure.database.repositories.servico_repository_impl import (
+from adapters.database.repositories.servico_repository_impl import (
     ServicoRepositoryImpl,
 )
 from tests.integration.conftest import (
@@ -121,7 +121,7 @@ async def test_has_vinculos_por_ordem_servico(db_session):
     marca = criar_marca(db_session)
     veiculo = criar_veiculo(db_session, cliente.id, marca.id)
 
-    from infrastructure.database.models import OrdemServicoModel
+    from adapters.database.models import OrdemServicoModel
 
     ordem = OrdemServicoModel(
         veiculo_id=veiculo.id, descricao="Manutenção", status="Recebida"

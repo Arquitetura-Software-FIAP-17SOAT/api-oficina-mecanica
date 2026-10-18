@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, Mock
 
 from application.commands.login_user import LoginUserCommand, LoginUserUseCase
 from domain.entities.usuario import Usuario
-from infrastructure.auth.jwt_token_generator import JWTTokenGenerator
+from adapters.auth.jwt_token_generator import JWTTokenGenerator
 
 _TOKEN_GENERATOR = JWTTokenGenerator()
 

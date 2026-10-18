@@ -3,7 +3,11 @@ from dataclasses import dataclass, field
 
 from domain.entities.ordem_servico import OrdemServico
 from domain.repositories.ordem_servico_repository import OrdemServicoRepository
-from domain.value_objects.status_ordem_servico import StatusOrdemServico
+from domain.value_objects.status_ordem_servico import (
+    PRIORIDADE_NA_LISTAGEM,
+    STATUS_ENCERRADOS,
+    StatusOrdemServico,
+)
 
 STATUS_VALIDOS = {status.value for status in StatusOrdemServico}
 
@@ -61,6 +65,8 @@ class ListOrdensServicoUseCase:
             status=query.status,
             cpf_cnpj=self._normalizar_documento(query.cpf_cnpj),
             placa=self._normalizar_placa(query.placa),
+            excluir_status=[status.value for status in STATUS_ENCERRADOS],
+            prioridade_status=[status.value for status in PRIORIDADE_NA_LISTAGEM],
         )
 
         return OrdensServicoPaginadas(

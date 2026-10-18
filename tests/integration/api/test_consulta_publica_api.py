@@ -182,3 +182,39 @@ def test_rota_administrativa_continua_exigindo_token(
     ordem_id = _cenario(db_session, client)
 
     assert unauthenticated_client.get(f"/ordens-servico/{ordem_id}").status_code == 401
+
+
+def test_consulta_acompanha_os_por_todos_os_status(
+    client, unauthenticated_client, db_session
+):
+    """A consulta reflete cada um dos seis status do ciclo de vida da OS."""
+    servico = criar_servico(db_session)
+    ordem_id = _cenario(db_session, client)
+
+    def status_consultado():
+        corpo = unauthenticated_client.post(
+            "/consulta/ordens-servico",
+            json={"numero_os": ordem_id, "cpf_cnpj": CPF_CLIENTE},
+        ).json()
+        return corpo["status"]
+
+    etapas = [
+        (None, "Recebida"),
+        ("iniciar-diagnostico", "Em diagnóstico"),
+        ("enviar-aprovacao", "Aguardando aprovação"),
+        ("aprovar-executar", "Em execução"),
+        ("finalizar", "Finalizada"),
+        ("entregar", "Entregue"),
+    ]
+
+    for acao, esperado in etapas:
+        if acao == "enviar-aprovacao":
+            client.post(
+                f"/ordens-servico/{ordem_id}/adicionar-item",
+                json={"servico_id": str(servico.id), "quantidade": 1},
+            )
+        if acao:
+            resposta = client.post(f"/ordens-servico/{ordem_id}/{acao}", json={})
+            assert resposta.status_code == 200, resposta.text
+
+        assert status_consultado() == esperado

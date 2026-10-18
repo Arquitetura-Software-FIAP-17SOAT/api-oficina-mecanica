@@ -41,19 +41,19 @@ escalabilidade**, incorporando práticas modernas de infraestrutura e automaçã
 ## 1. Código — refatoração
 
 - [x] **Clean Code** (nomes claros, simplicidade, coesão): revisar os módulos existentes
-      (`application/`, `domain/`, `infrastructure/`, `presentation/`).
+      (`application/`, `domain/`, `adapters/`, `presentation/`).
       Feito: `presentation/api/routes/ordens_servico.py` (1333 → 1002 linhas) deixou de repetir
       `try/except` e o 404 em cada endpoint; passou a usar `presentation/api/error_handling.py`
       (`traduzir_erros`, `ordem_servico_ou_404`) e helpers de conversão de resposta.
 - [x] **Clean Architecture / Arquitetura Hexagonal** (separação adequada de camadas e
       dependências): confirmar que as camadas já separadas
-      (`domain` → `application` → `infrastructure`/`presentation`) não têm dependências invertidas
-      (ex.: `domain` importando de `infrastructure`).
+      (`domain` → `application` → `adapters`/`presentation`) não têm dependências invertidas
+      (ex.: `domain` importando de `adapters`).
       Feito: `domain` não importa nada fora de si; `application` só importa `domain` e suas
       portas (`application/ports`: `PasswordHasher`, `TokenGenerator`; repositórios em
       `domain/repositories`). Os 3 use cases que usavam SQLAlchemy direto passaram a usar
-      repositórios. `infrastructure` implementa as portas; `presentation` só toca
-      `infrastructure` em `presentation/dependencies` (composição). A regra é garantida por
+      repositórios. `adapters` implementa as portas; `presentation` só toca
+      `adapters` em `presentation/dependencies` (composição). A regra é garantida por
       `tests/unit/test_arquitetura.py`.
 - [x] **Testes automatizados**: já há suíte em `tests/` (614 testes, 99% de cobertura de
       `application/` + `presentation/`) — validar que os fluxos críticos da Fase 2 (abaixo) também
@@ -81,15 +81,40 @@ Verificar o que já existe em `presentation/api/routes/ordens_servico.py` e
       Limitação conhecida: a gravação da OS e a baixa de estoque são commits separados, então uma
       falha de banco entre os dois não é revertida — tratada como unidade de trabalho em
       `docs/auditoria-conformidade.md` (seção 3).
-- [ ] **Consulta de status da OS**: informa a situação atual da OS, que é um dos estados — `Recebida`, `Diagnóstico`,
-      `Aguardando Aprovação`, `Execução`, `Finalizada`, `Entregue`.
-- [ ] **Aprovação de orçamento**: endpoint para receber notificações externas de aprovação ou
+- [x] **Consulta de status da OS**: informa a situação atual da OS, que é um dos estados —
+      `Recebida`, `Diagnóstico`, `Aguardando Aprovação`, `Execução`, `Finalizada`, `Entregue`.
+      Feito (já coberto desde a Fase 1): `POST /consulta/ordens-servico` (cliente, sem login, por
+      número da OS + CPF/CNPJ) devolve `status` e `status_descricao`; `GET /ordens-servico/{id}`
+      (administrativo) devolve o `status` no detalhe. Teste que percorre os seis estados:
+      `test_consulta_acompanha_os_por_todos_os_status`.
+      Ponto de atenção: a API usa `Em diagnóstico` e `Em execução`; o enunciado da Fase 2 escreve
+      `Diagnóstico` e `Execução`. São os mesmos estados, só muda a grafia — sem ação necessária.
+- [x] **Aprovação de orçamento**: endpoint para receber notificações externas de aprovação ou
       recusa do orçamento do cliente.
-- [ ] **Listagem de ordens de serviço**:
-  - [ ] Ordenar por status: `Execução > Aguardando Aprovação > Diagnóstico > Recebida`.
-  - [ ] Dentro do mesmo status, mais antigas primeiro.
-  - [ ] Excluir da listagem OS `Finalizada`/`Entregue` (exclusão **lógica**, não física).
-- [ ] **Atualização de status da OS** via alguma ferramenta como e-mail.
+      Feito: `POST /integracoes/ordens-servico/{id}/orcamento` com `{"decisao": "aprovado" |
+      "recusado"}`, autenticado por chave de API no header `X-API-Key` (variável
+      `INTEGRACAO_API_KEY`; sem ela a integração responde 503). Aprovado leva a OS a
+      `Em execução`; recusado, a `Finalizada`. Reaproveita os use cases de aprovar/rejeitar.
+      No Kubernetes, a chave entra como `Secret`. Testes em
+      `tests/integration/api/test_integracoes_api.py`.
+- [x] **Listagem de ordens de serviço**:
+  - [x] Ordenar por status: `Execução > Aguardando Aprovação > Diagnóstico > Recebida`.
+  - [x] Dentro do mesmo status, mais antigas primeiro.
+  - [x] Excluir da listagem OS `Finalizada`/`Entregue` (exclusão **lógica**, não física).
+        Feito: a regra vive no domínio (`PRIORIDADE_NA_LISTAGEM` e `STATUS_ENCERRADOS` em
+        `status_ordem_servico.py`), o use case a repassa e o repositório a aplica (`CASE` no
+        `ORDER BY` + `NOT IN`). As OS encerradas seguem no banco e consultáveis por
+        `GET /ordens-servico/{id}`; filtrar `?status=Finalizada` ou `Entregue` devolve lista vazia.
+        Testes em `tests/integration/api/test_listagem_ordens_servico_api.py`.
+- [x] **Atualização de status da OS** via alguma ferramenta como e-mail.
+      Feito: `POST /integracoes/ordens-servico/{id}/status` recebe a ação já interpretada pela
+      ferramenta externa (por exemplo, um parser de e-mail), com `acao` entre `iniciar_diagnostico`,
+      `enviar_para_aprovacao`, `retornar_para_diagnostico`, `finalizar` e `entregar`, e
+      `observacoes` opcional (texto do e-mail). Mesma autenticação `X-API-Key` da aprovação de
+      orçamento (que continua em `/orcamento`) e os mesmos use cases das rotas administrativas,
+      então valem as mesmas regras de transição (ação inválida para o status atual: 400).
+      O endpoint não lê e-mails nem integra com um provedor: quem faz isso chama a API.
+      Testes em `tests/integration/api/test_integracoes_api.py`.
 
 ## 3. Infraestrutura
 

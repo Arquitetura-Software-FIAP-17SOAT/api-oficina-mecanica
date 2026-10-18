@@ -4,8 +4,8 @@ import pytest
 from fastapi import HTTPException
 from jose import jwt
 
-from infrastructure.config.config import settings
-from infrastructure.config.security import create_access_token
+from adapters.config.config import settings
+from adapters.config.security import create_access_token
 from presentation.dependencies.auth_dependencies import get_current_user
 
 

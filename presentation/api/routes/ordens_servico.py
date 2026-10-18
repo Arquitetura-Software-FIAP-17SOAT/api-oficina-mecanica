@@ -518,6 +518,10 @@ async def criar_ordem_servico(
     description=(
         "Lista as ordens de serviço com paginação, podendo ser filtradas por "
         "status, CPF/CNPJ do cliente ou placa do veículo. "
+        "Ordenada por prioridade de status (Em execução, Aguardando aprovação, "
+        "Em diagnóstico, Recebida) e, dentro do mesmo status, das mais antigas "
+        "para as mais novas. OS Finalizadas e Entregues não aparecem na "
+        "listagem (continuam consultáveis pelo detalhe). "
         "**Requer autenticação (Bearer token).**"
     ),
 )

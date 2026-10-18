@@ -12,7 +12,7 @@ para a Fase 2**; o histórico dos achados já corrigidos foi removido (está no 
   Docker e justificativa do PostgreSQL no README. Fica pendente apenas o que é externo ao código
   (vídeo, Event Storming, relatório de vulnerabilidades, PDF de entrega).
 - **Fase 2, seção 1 (código):** Clean Code e Clean Architecture concluídos. `domain` e
-  `application` não dependem de `infrastructure`, `presentation` nem de frameworks, e a regra é
+  `application` não dependem de `adapters`, `presentation` nem de frameworks, e a regra é
   verificada por `tests/unit/test_arquitetura.py`.
 
 > Legenda: 🔴 Crítico · 🟠 Lacuna · 🟡 Atenção
@@ -25,13 +25,13 @@ para a Fase 2**; o histórico dos achados já corrigidos foi removido (está no 
 `.env.example` e `docker-compose.yml` definem `JWT_SECRET_KEY`, `JWT_ALGORITHM` e
 `JWT_EXPIRE_MINUTES`, mas `Settings` lê `SECRET_KEY`, `ALGORITHM` e `ACCESS_TOKEN_EXPIRE_MINUTES`,
 sem `env_prefix` nem alias. Configurar o `JWT_SECRET_KEY` não tem efeito: em qualquer ambiente a
-aplicação assina os tokens com o segredo versionado em `infrastructure/config/config.py`, e quem
+aplicação assina os tokens com o segredo versionado em `adapters/config/config.py`, e quem
 tem acesso ao código forja um token administrativo válido.
 
 **Impacto na Fase 2:** o `Secret` do Kubernetes e o pipeline de deploy dependem de a aplicação
 realmente ler a variável. Corrigir antes de escrever os manifestos.
 
-- `infrastructure/config/config.py`, `infrastructure/config/security.py`
+- `adapters/config/config.py`, `adapters/config/security.py`
 - `.env.example`, `docker-compose.yml`
 
 **Correção:** `env_prefix="JWT_"`, `SECRET_KEY` obrigatório (sem valor padrão, a aplicação falha
@@ -48,39 +48,49 @@ contador precisa de armazenamento compartilhado (Redis ou equivalente) ou de um 
 
 ---
 
-## 2. APIs da Fase 2 ainda não atendidas
+## 2. APIs da Fase 2 (pontos de atenção)
 
-### 🟠 Listagem de OS: ordenação e exclusão lógica
-`GET /ordens-servico` ordena apenas por `id` decrescente e devolve todas as OS. Falta:
-- ordenar por status `Em execução > Aguardando aprovação > Em diagnóstico > Recebida`;
-- dentro do mesmo status, as mais antigas primeiro;
-- excluir da listagem as OS `Finalizada` e `Entregue` (exclusão lógica, sem apagar do banco).
-
-A exclusão precisa ser uma regra explícita: hoje o filtro `?status=Finalizada` consegue listar
-essas OS. Definir se continua permitido para consulta administrativa ou se passa a ser vedado.
-
-- `infrastructure/database/repositories/ordem_servico_repository_impl.py` (`list_paginado`)
-- `application/queries/list_ordens_servico.py`
-
-### 🟠 Aprovação de orçamento por notificação externa
-`POST /ordens-servico/{id}/aprovar-executar` e `/rejeitar-orcamento` existem, mas ficam atrás do
-JWT administrativo (`dependencies=[Depends(get_current_user)]` no router). Um serviço externo
-precisa de credencial própria (token de serviço/API key vinda de `Secret`) ou de um endpoint
-dedicado. Também falta decidir o contrato da notificação (aprovada/recusada, identificação da OS).
-
-### 🟠 Atualização de status por ferramenta externa (e-mail)
-Não existe nenhum mecanismo de entrada por e-mail ou equivalente. Precisa de decisão de desenho
-(webhook de um provedor, endpoint que recebe o e-mail já parseado, ou fila) e de endpoint com
-autenticação própria. Reutilizar os use cases de transição existentes.
-
-### 🟡 Nomenclatura dos status no contrato da API
-O enunciado da Fase 2 usa `Diagnóstico` e `Execução`; a API devolve `Em diagnóstico` e
-`Em execução` (nomes da Fase 1). Confirmar com a avaliação se é aceitável ou se a consulta de
-status deve expor os nomes novos.
+### 🟡 Nomenclatura dos status (ponto de atenção)
+O enunciado da Fase 2 escreve `Diagnóstico` e `Execução`; a API devolve `Em diagnóstico` e
+`Em execução`. São os mesmos estados, só muda a grafia. Sem ação necessária; manter só como
+observação para a apresentação.
 
 ---
 
-## 3. Consistência de dados
+## 3. Clean Architecture / Arquitetura Hexagonal (ponto de atenção da Fase 2)
+
+### 🟡 Estrutura de camadas e nomenclatura
+A pasta `infrastructure/` foi renomeada para **`adapters/`**, o termo da Arquitetura Hexagonal para
+o que ela contém: as implementações das portas (repositórios SQLAlchemy, `BCryptPasswordHasher`,
+`JWTTokenGenerator`), a configuração e os seeders. O nome antigo também se confundia com a pasta
+`/infra` (Terraform) que o enunciado pede para a infraestrutura como código.
+
+| Camada | Papel | Pode importar |
+|---|---|---|
+| `domain/` | Entidades, objetos de valor e portas dos repositórios (`domain/repositories`) | só `domain` |
+| `application/` | Casos de uso e portas de serviço (`application/ports`) | `domain` |
+| `adapters/` | Adaptadores que implementam as portas (banco, hash, JWT) | `domain`, `application` |
+| `presentation/` | API REST (FastAPI) e composição das dependências | `application`, `domain` e, só em `presentation/dependencies`, `adapters` |
+
+A regra de dependência (de fora para dentro) é verificada por `tests/unit/test_arquitetura.py`, que
+falha se `domain` ou `application` importarem `adapters`, `presentation` ou frameworks, ou se
+`presentation` usar `adapters` fora de `presentation/dependencies`.
+
+Pontos a manter sob observação:
+- `presentation/dependencies/auth_dependencies.py` importa `decode_access_token` direto de
+  `adapters`; uma porta `TokenDecoder` fecharia o último desvio (hoje permitido pelo teste por
+  estar na composição das dependências).
+- As portas ficam em dois lugares: repositórios em `domain/repositories` e serviços
+  (`PasswordHasher`, `TokenGenerator`) em `application/ports`. Intencional, mas vale manter o
+  critério: persistência de agregados no domínio, serviços técnicos na aplicação.
+- Os repositórios fazem `commit` por conta própria; uma unidade de trabalho (seção 4) devolveria
+  o controle da transação à camada de aplicação.
+- Pastas de código fora das camadas (`seed.py`, `create_schema.py` na raiz) ainda são pendência de
+  organização (seção 5).
+
+---
+
+## 4. Consistência de dados
 
 ### 🟡 Gravação da OS e baixa de estoque não são atômicas
 Em `adicionar-insumo` e, agora, também na abertura de OS com peças, a OS e a baixa de estoque são
@@ -101,7 +111,7 @@ com `orcamento_calculado`. Definir se alterar itens após o envio devolve a OS p
 
 ---
 
-## 4. Refatoração restante (seção 1 da Fase 2)
+## 5. Refatoração restante (seção 1 da Fase 2)
 
 ### 🟡 Rotas com o mesmo `try/except` repetido
 `ordens_servico.py` já usa `traduzir_erros` / `ordem_servico_ou_404`
@@ -112,7 +122,7 @@ próprio.
 
 ### 🟡 Scripts e seeders na raiz
 - `seed.py` e `create_schema.py` ficam soltos na raiz; mover o seed para dentro de
-  `infrastructure/database/` e decidir o destino de `create_schema.py`.
+  `adapters/database/` e decidir o destino de `create_schema.py`.
 - `create_schema.py` mantém um DDL manual que **diverge dos models** (não cria
   `ordem_servico_insumos`, usa `'RECEBIDA'` como status padrão). `create_tables()` já cria o schema
   real; ou se remove o script ou se adota migrações (Alembic).
@@ -128,7 +138,7 @@ próprio.
 
 ---
 
-## 5. Infraestrutura e entregáveis da Fase 2 (trabalho novo)
+## 6. Infraestrutura e entregáveis da Fase 2 (trabalho novo)
 
 Não existem `/k8s`, `/infra` nem pipeline de CI/CD. Pontos do que já existe que precisam de
 ajuste antes disso:
@@ -149,8 +159,6 @@ ajuste antes disso:
 ## Ordem sugerida
 
 1. 🔴 Corrigir a configuração do JWT (pré-requisito do `Secret` do Kubernetes).
-2. 🟠 Listagem de OS (ordenação + exclusão lógica), com testes.
-3. 🟠 Autenticação de serviço para aprovação externa e entrada de status por e-mail.
-4. 🟡 Unidade de trabalho para OS + estoque.
-5. 🟡 Refatoração restante das rotas, seeders e scripts da raiz.
-6. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.
+2. 🟡 Unidade de trabalho para OS + estoque.
+3. 🟡 Refatoração restante das rotas, seeders e scripts da raiz.
+4. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.

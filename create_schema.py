@@ -1,7 +1,7 @@
 """Script para criar o schema completo do banco de dados."""
 
 from sqlalchemy import text
-from infrastructure.database.database import engine
+from adapters.database.database import engine
 
 sql_schema = """
 CREATE TABLE IF NOT EXISTS usuarios (
