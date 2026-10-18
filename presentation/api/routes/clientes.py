@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, Path, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from application.commands.create_cliente import (
@@ -17,6 +17,11 @@ from application.commands.update_cliente import (
 )
 from application.queries.get_cliente import GetClienteUseCase
 from application.queries.list_clientes import ListClientesUseCase
+from presentation.api.error_handling import (
+    encontrado_ou_404,
+    exclusao_ou_404,
+    traduzir_value_error,
+)
 from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.cliente_dependencies import (
     get_create_cliente_use_case,
@@ -125,7 +130,7 @@ async def create_cliente(
     request: CreateClienteRequest,
     use_case: CreateClienteUseCase = Depends(get_create_cliente_use_case),
 ):
-    try:
+    with traduzir_value_error():
         command = CreateClienteCommand(
             nome=request.nome,
             usuario_id=request.usuario_id,
@@ -134,12 +139,6 @@ async def create_cliente(
         )
 
         return await use_case.execute(command)
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
 
 
 @router.get(
@@ -170,13 +169,7 @@ async def get_cliente(
 ):
     cliente = await use_case.execute(cliente_id)
 
-    if cliente is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=CLIENTE_NAO_ENCONTRADO,
-        )
-
-    return cliente
+    return encontrado_ou_404(cliente, CLIENTE_NAO_ENCONTRADO)
 
 
 @router.put(
@@ -193,7 +186,7 @@ async def update_cliente(
     request: UpdateClienteRequest,
     use_case: UpdateClienteUseCase = Depends(get_update_cliente_use_case),
 ):
-    try:
+    with traduzir_value_error():
         command = UpdateClienteCommand(
             cliente_id=cliente_id,
             nome=request.nome,
@@ -203,19 +196,7 @@ async def update_cliente(
 
         cliente = await use_case.execute(command)
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    if cliente is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=CLIENTE_NAO_ENCONTRADO,
-        )
-
-    return cliente
+    return encontrado_ou_404(cliente, CLIENTE_NAO_ENCONTRADO)
 
 
 @router.delete(
@@ -230,19 +211,9 @@ async def delete_cliente(
     ],
     use_case: DeleteClienteUseCase = Depends(get_delete_cliente_use_case),
 ):
-    try:
+    with traduzir_value_error():
         excluido = await use_case.execute(
             DeleteClienteCommand(cliente_id=cliente_id)
         )
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    if not excluido:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=CLIENTE_NAO_ENCONTRADO,
-        )
+    exclusao_ou_404(excluido, CLIENTE_NAO_ENCONTRADO)

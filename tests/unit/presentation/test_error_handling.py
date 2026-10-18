@@ -1,7 +1,13 @@
 import pytest
 from fastapi import HTTPException
 
-from presentation.api.error_handling import ordem_servico_ou_404, traduzir_erros
+from presentation.api.error_handling import (
+    encontrado_ou_404,
+    exclusao_ou_404,
+    ordem_servico_ou_404,
+    traduzir_erros,
+    traduzir_value_error,
+)
 
 
 class NaoEncontradoError(Exception):
@@ -56,3 +62,44 @@ def test_ordem_servico_ou_404():
 
     assert info.value.status_code == 404
     assert "7" in info.value.detail
+
+
+def test_traduzir_value_error_usa_400_por_padrao():
+    with pytest.raises(HTTPException) as info:
+        with traduzir_value_error():
+            raise ValueError("inválido")
+
+    assert (info.value.status_code, info.value.detail) == (400, "inválido")
+
+
+def test_traduzir_value_error_aceita_outro_status():
+    with pytest.raises(HTTPException) as info:
+        with traduzir_value_error(401):
+            raise ValueError("credenciais")
+
+    assert info.value.status_code == 401
+
+
+def test_traduzir_value_error_nao_captura_outras_excecoes():
+    with pytest.raises(RuntimeError):
+        with traduzir_value_error():
+            raise RuntimeError("inesperado")
+
+
+def test_encontrado_ou_404():
+    assert encontrado_ou_404("recurso", "não achei") == "recurso"
+    assert encontrado_ou_404(0, "não achei") == 0  # só None é "não encontrado"
+
+    with pytest.raises(HTTPException) as info:
+        encontrado_ou_404(None, "não achei")
+
+    assert (info.value.status_code, info.value.detail) == (404, "não achei")
+
+
+def test_exclusao_ou_404():
+    assert exclusao_ou_404(True, "não achei") is None
+
+    with pytest.raises(HTTPException) as info:
+        exclusao_ou_404(False, "não achei")
+
+    assert info.value.status_code == 404

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, Path, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from domain.value_objects.data_hora import DataHora
@@ -20,6 +20,11 @@ from application.commands.update_veiculo import (
 )
 from application.queries.get_veiculo import GetVeiculoUseCase
 from application.queries.list_veiculos import ListVeiculosUseCase
+from presentation.api.error_handling import (
+    encontrado_ou_404,
+    exclusao_ou_404,
+    traduzir_value_error,
+)
 from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.veiculo_dependencies import (
     get_create_veiculo_use_case,
@@ -144,7 +149,7 @@ async def create_veiculo(
     request: CreateVeiculoRequest,
     use_case: CreateVeiculoUseCase = Depends(get_create_veiculo_use_case),
 ):
-    try:
+    with traduzir_value_error():
         command = CreateVeiculoCommand(
             cliente_id=request.cliente_id,
             marca_id=request.marca_id,
@@ -155,12 +160,6 @@ async def create_veiculo(
         )
 
         return await use_case.execute(command)
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
 
 
 @router.get(
@@ -201,13 +200,7 @@ async def get_veiculo(
 ):
     veiculo = await use_case.execute(veiculo_id)
 
-    if veiculo is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=VEICULO_NAO_ENCONTRADO,
-        )
-
-    return veiculo
+    return encontrado_ou_404(veiculo, VEICULO_NAO_ENCONTRADO)
 
 
 @router.put(
@@ -224,7 +217,7 @@ async def update_veiculo(
     request: UpdateVeiculoRequest,
     use_case: UpdateVeiculoUseCase = Depends(get_update_veiculo_use_case),
 ):
-    try:
+    with traduzir_value_error():
         command = UpdateVeiculoCommand(
             veiculo_id=veiculo_id,
             marca_id=request.marca_id,
@@ -236,19 +229,7 @@ async def update_veiculo(
 
         veiculo = await use_case.execute(command)
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    if veiculo is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=VEICULO_NAO_ENCONTRADO,
-        )
-
-    return veiculo
+    return encontrado_ou_404(veiculo, VEICULO_NAO_ENCONTRADO)
 
 
 @router.delete(
@@ -263,19 +244,9 @@ async def delete_veiculo(
     ],
     use_case: DeleteVeiculoUseCase = Depends(get_delete_veiculo_use_case),
 ):
-    try:
+    with traduzir_value_error():
         excluido = await use_case.execute(
             DeleteVeiculoCommand(veiculo_id=veiculo_id)
         )
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    if not excluido:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=VEICULO_NAO_ENCONTRADO,
-        )
+    exclusao_ou_404(excluido, VEICULO_NAO_ENCONTRADO)
