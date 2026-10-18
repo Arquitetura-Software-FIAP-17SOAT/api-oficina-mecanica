@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from infrastructure.database.database import create_tables
+from adapters.database.database import create_tables
 from presentation.api.routes.clientes import router as clientes_router
 from presentation.api.routes.consulta_publica import router as consulta_publica_router
 from presentation.api.routes.integracoes import router as integracoes_router

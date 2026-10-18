@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from domain.entities.insumo import Insumo
 from domain.repositories.insumo_repository import InsumoRepository
-from infrastructure.database.models import InsumoModel, ServicoInsumoModel
+from adapters.database.models import InsumoModel, ServicoInsumoModel
 
 
 class InsumoRepositoryImpl(InsumoRepository):

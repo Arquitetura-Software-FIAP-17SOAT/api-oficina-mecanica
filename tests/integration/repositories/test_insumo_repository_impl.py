@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from domain.entities.insumo import Insumo
-from infrastructure.database.repositories.insumo_repository_impl import (
+from adapters.database.repositories.insumo_repository_impl import (
     InsumoRepositoryImpl,
 )
 from tests.integration.conftest import criar_insumo, criar_servico
@@ -110,7 +110,7 @@ async def test_list_by_servico_id(db_session):
     insumo_vinculado = criar_insumo(db_session, nome="Óleo 5W30")
     criar_insumo(db_session, nome="Pastilha de freio")
 
-    from infrastructure.database.models import ServicoInsumoModel
+    from adapters.database.models import ServicoInsumoModel
 
     db_session.add(
         ServicoInsumoModel(
@@ -143,7 +143,7 @@ async def test_has_vinculos(db_session):
     repository = InsumoRepositoryImpl(db_session)
     assert await repository.has_vinculos(insumo.id) is False
 
-    from infrastructure.database.models import ServicoInsumoModel
+    from adapters.database.models import ServicoInsumoModel
 
     db_session.add(
         ServicoInsumoModel(servico_id=servico.id, insumo_id=insumo.id, quantidade=1)

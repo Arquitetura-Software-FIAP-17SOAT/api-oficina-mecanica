@@ -5,8 +5,8 @@ from application.commands.delete_servico import DeleteServicoUseCase
 from application.commands.update_servico import UpdateServicoUseCase
 from application.queries.get_servico import GetServicoUseCase
 from application.queries.list_servicos import ListServicosUseCase
-from infrastructure.database.database import get_db
-from infrastructure.database.repositories.servico_repository_impl import (
+from adapters.database.database import get_db
+from adapters.database.repositories.servico_repository_impl import (
     ServicoRepositoryImpl,
 )
 

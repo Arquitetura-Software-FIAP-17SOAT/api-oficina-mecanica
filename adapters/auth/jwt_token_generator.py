@@ -1,5 +1,5 @@
 from application.ports.token_generator import TokenGenerator
-from infrastructure.config.security import create_access_token
+from adapters.config.security import create_access_token
 
 
 class JWTTokenGenerator(TokenGenerator):

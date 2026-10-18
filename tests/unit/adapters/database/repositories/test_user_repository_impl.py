@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock
 
 from domain.entities.usuario import Usuario
-from infrastructure.database.repositories.user_repository_impl import UserRepositoryImpl
+from adapters.database.repositories.user_repository_impl import UserRepositoryImpl
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@ import hmac
 
 from fastapi import Header, HTTPException, status
 
-from infrastructure.config.config import settings
+from adapters.config.config import settings
 
 
 def validar_chave_integracao(

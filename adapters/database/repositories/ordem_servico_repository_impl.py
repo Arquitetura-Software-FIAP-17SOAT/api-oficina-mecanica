@@ -5,7 +5,7 @@ from sqlalchemy import and_, case
 from domain.entities.ordem_servico import OrdemServico
 from domain.repositories.ordem_servico_repository import OrdemServicoRepository
 from domain.value_objects.status_ordem_servico import StatusOrdemServico
-from infrastructure.database.models import (
+from adapters.database.models import (
     ClienteModel,
     OrdemServicoModel,
     OrdemServicoInsumoModel,

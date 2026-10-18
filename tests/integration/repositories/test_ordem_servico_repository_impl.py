@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 
 from domain.entities.ordem_servico import OrdemServico
 from domain.value_objects.status_orcamento import StatusOrcamento
-from infrastructure.database.repositories.ordem_servico_repository_impl import (
+from adapters.database.repositories.ordem_servico_repository_impl import (
     OrdemServicoRepositoryImpl,
 )
 from tests.integration.conftest import (

@@ -12,7 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from infrastructure.database.database import Base
+from adapters.database.database import Base
 
 
 def _agora_utc() -> datetime:

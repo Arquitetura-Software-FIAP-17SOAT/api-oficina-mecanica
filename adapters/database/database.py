@@ -40,7 +40,7 @@ def create_tables() -> None:
     Deve ser chamado na inicialização da aplicação.
     """
     # Importa todos os models para registrá-los no metadata
-    from infrastructure.database.models import ( 
+    from adapters.database.models import ( 
         UserModel,
         ClienteModel,
         MarcaModel,

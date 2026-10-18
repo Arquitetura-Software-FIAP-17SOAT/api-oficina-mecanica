@@ -1,7 +1,7 @@
 """Fixtures compartilhadas pelos testes de integração.
 
 Os testes de integração usam um banco SQLite em memória, criado a partir
-dos mesmos models SQLAlchemy usados em produção (``infrastructure.database.models``),
+dos mesmos models SQLAlchemy usados em produção (``adapters.database.models``),
 para exercitar os repositórios e as rotas da API com SQL de verdade — sem
 depender de um PostgreSQL disponível no ambiente de testes.
 """
@@ -15,8 +15,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from infrastructure.database.database import Base
-from infrastructure.database.models import (  # noqa: F401  (registram os models no metadata)
+from adapters.database.database import Base
+from adapters.database.models import (  # noqa: F401  (registram os models no metadata)
     ClienteModel,
     HistoricoOrdemServicoModel,
     InsumoModel,

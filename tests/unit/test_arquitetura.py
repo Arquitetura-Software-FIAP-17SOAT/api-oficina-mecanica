@@ -5,18 +5,18 @@ import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
 
-CAMADAS = ("domain", "application", "infrastructure", "presentation")
+CAMADAS = ("domain", "application", "adapters", "presentation")
 FRAMEWORKS = ("sqlalchemy", "fastapi", "pydantic", "passlib", "jose")
 
 # Camada -> pacotes que ela NÃO pode importar (regra de dependência: de fora para dentro).
 PROIBIDOS = {
-    "domain": ("application", "infrastructure", "presentation") + FRAMEWORKS,
-    "application": ("infrastructure", "presentation") + FRAMEWORKS,
-    "infrastructure": ("presentation",),
+    "domain": ("application", "adapters", "presentation") + FRAMEWORKS,
+    "application": ("adapters", "presentation") + FRAMEWORKS,
+    "adapters": ("presentation",),
 }
 
-# Apenas a composição das dependências (e a autenticação) conhece a infraestrutura.
-PRESENTATION_PODE_IMPORTAR_INFRA = {
+# Apenas a composição das dependências (e a autenticação) conhece os adaptadores.
+PRESENTATION_PODE_IMPORTAR_ADAPTERS = {
     "presentation/dependencies",
 }
 
@@ -46,14 +46,14 @@ def test_camada_nao_importa_camadas_externas(camada):
     assert not violacoes, "\n".join(violacoes)
 
 
-def test_presentation_so_acessa_infraestrutura_na_composicao_de_dependencias():
+def test_presentation_so_acessa_adapters_na_composicao_de_dependencias():
     violacoes = [
-        f"{arquivo.relative_to(RAIZ)} importa infrastructure"
+        f"{arquivo.relative_to(RAIZ)} importa adapters"
         for arquivo in _arquivos("presentation")
-        if "infrastructure" in _imports(arquivo)
+        if "adapters" in _imports(arquivo)
         and not any(
             arquivo.relative_to(RAIZ).as_posix().startswith(permitido)
-            for permitido in PRESENTATION_PODE_IMPORTAR_INFRA
+            for permitido in PRESENTATION_PODE_IMPORTAR_ADAPTERS
         )
     ]
 

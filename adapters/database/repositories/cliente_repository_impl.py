@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from domain.entities.cliente import Cliente
 from domain.repositories.cliente_repository import ClienteRepository
-from infrastructure.database.models import ClienteModel, VeiculoModel
+from adapters.database.models import ClienteModel, VeiculoModel
 
 
 class ClienteRepositoryImpl(ClienteRepository):

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from domain.entities.servico import Servico
 from domain.repositories.servico_repository import ServicoRepository
-from infrastructure.database.models import (
+from adapters.database.models import (
     OrdemServicoServicoModel,
     ServicoInsumoModel,
     ServicoModel,

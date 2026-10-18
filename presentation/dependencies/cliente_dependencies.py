@@ -5,11 +5,11 @@ from application.commands.delete_cliente import DeleteClienteUseCase
 from application.commands.update_cliente import UpdateClienteUseCase
 from application.queries.get_cliente import GetClienteUseCase
 from application.queries.list_clientes import ListClientesUseCase
-from infrastructure.database.database import get_db
-from infrastructure.database.repositories.cliente_repository_impl import (
+from adapters.database.database import get_db
+from adapters.database.repositories.cliente_repository_impl import (
     ClienteRepositoryImpl,
 )
-from infrastructure.database.repositories.user_repository_impl import (
+from adapters.database.repositories.user_repository_impl import (
     UserRepositoryImpl,
 )
 

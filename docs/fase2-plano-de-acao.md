@@ -41,19 +41,19 @@ escalabilidade**, incorporando práticas modernas de infraestrutura e automaçã
 ## 1. Código — refatoração
 
 - [x] **Clean Code** (nomes claros, simplicidade, coesão): revisar os módulos existentes
-      (`application/`, `domain/`, `infrastructure/`, `presentation/`).
+      (`application/`, `domain/`, `adapters/`, `presentation/`).
       Feito: `presentation/api/routes/ordens_servico.py` (1333 → 1002 linhas) deixou de repetir
       `try/except` e o 404 em cada endpoint; passou a usar `presentation/api/error_handling.py`
       (`traduzir_erros`, `ordem_servico_ou_404`) e helpers de conversão de resposta.
 - [x] **Clean Architecture / Arquitetura Hexagonal** (separação adequada de camadas e
       dependências): confirmar que as camadas já separadas
-      (`domain` → `application` → `infrastructure`/`presentation`) não têm dependências invertidas
-      (ex.: `domain` importando de `infrastructure`).
+      (`domain` → `application` → `adapters`/`presentation`) não têm dependências invertidas
+      (ex.: `domain` importando de `adapters`).
       Feito: `domain` não importa nada fora de si; `application` só importa `domain` e suas
       portas (`application/ports`: `PasswordHasher`, `TokenGenerator`; repositórios em
       `domain/repositories`). Os 3 use cases que usavam SQLAlchemy direto passaram a usar
-      repositórios. `infrastructure` implementa as portas; `presentation` só toca
-      `infrastructure` em `presentation/dependencies` (composição). A regra é garantida por
+      repositórios. `adapters` implementa as portas; `presentation` só toca
+      `adapters` em `presentation/dependencies` (composição). A regra é garantida por
       `tests/unit/test_arquitetura.py`.
 - [x] **Testes automatizados**: já há suíte em `tests/` (614 testes, 99% de cobertura de
       `application/` + `presentation/`) — validar que os fluxos críticos da Fase 2 (abaixo) também

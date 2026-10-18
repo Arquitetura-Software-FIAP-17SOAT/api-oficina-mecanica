@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from domain.entities.execucao_servico import ExecucaoServico
 from domain.repositories.execucao_servico_repository import ExecucaoServicoRepository
-from infrastructure.database.models import OrdemServicoModel, OrdemServicoServicoModel
+from adapters.database.models import OrdemServicoModel, OrdemServicoServicoModel
 
 
 class ExecucaoServicoRepositoryImpl(ExecucaoServicoRepository):

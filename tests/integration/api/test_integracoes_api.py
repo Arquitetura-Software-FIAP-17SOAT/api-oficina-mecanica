@@ -2,7 +2,7 @@
 
 import pytest
 
-from infrastructure.config.config import settings
+from adapters.config.config import settings
 from tests.integration.conftest import (
     criar_cliente,
     criar_marca,

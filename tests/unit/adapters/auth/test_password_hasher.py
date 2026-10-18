@@ -1,4 +1,4 @@
-from infrastructure.auth.password_hasher import BCryptPasswordHasher
+from adapters.auth.password_hasher import BCryptPasswordHasher
 
 
 def test_hash_gera_valor_diferente_da_senha_original():

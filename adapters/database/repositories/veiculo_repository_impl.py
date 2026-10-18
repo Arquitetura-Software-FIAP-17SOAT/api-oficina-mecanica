@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from domain.entities.veiculo import Veiculo
 from domain.repositories.veiculo_repository import VeiculoRepository
 from domain.value_objects.data_hora import DataHora
-from infrastructure.database.models import (
+from adapters.database.models import (
     MarcaModel,
     OrdemServicoModel,
     VeiculoModel,

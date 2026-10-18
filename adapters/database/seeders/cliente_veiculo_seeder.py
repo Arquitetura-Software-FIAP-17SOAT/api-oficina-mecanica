@@ -1,6 +1,6 @@
-from infrastructure.database.database import SessionLocal
-from infrastructure.database.models import UserModel, ClienteModel, MarcaModel, VeiculoModel
-from infrastructure.auth.password_hasher import BCryptPasswordHasher
+from adapters.database.database import SessionLocal
+from adapters.database.models import UserModel, ClienteModel, MarcaModel, VeiculoModel
+from adapters.auth.password_hasher import BCryptPasswordHasher
 
 
 def seed_cliente_veiculo():

@@ -3,8 +3,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from jose import JWTError, jwt
 
-from infrastructure.config.config import settings
-from infrastructure.config.security import (
+from adapters.config.config import settings
+from adapters.config.security import (
     create_access_token,
     decode_access_token,
     hash_password,

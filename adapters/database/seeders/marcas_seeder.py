@@ -1,5 +1,5 @@
-from infrastructure.database.database import SessionLocal
-from infrastructure.database.models import MarcaModel
+from adapters.database.database import SessionLocal
+from adapters.database.models import MarcaModel
 
 
 def seed_marcas():

@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from domain.entities.usuario import Usuario
 from domain.repositories.user_repository import UserRepository
-from infrastructure.database.models import UserModel
+from adapters.database.models import UserModel
 
 
 class UserRepositoryImpl(UserRepository):

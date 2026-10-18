@@ -131,10 +131,10 @@ uv run pytest
 Os testes ficam em `tests/`, organizados em:
 
 - `tests/unit/` — testes unitários (entidades, value objects, casos de uso da
-  camada `application`, e implementações de infraestrutura testadas com
+  camada `application`, e implementações de adaptadores (`adapters`) testadas com
   dublês). Não tocam banco de dados nem rede.
 - `tests/integration/` — testes de integração. Sobem um SQLite em memória
-  com o schema real (`infrastructure/database/models.py`) e exercitam:
+  com o schema real (`adapters/database/models.py`) e exercitam:
   - `tests/integration/repositories/`: os repositórios SQLAlchemy fazendo
     SQL de verdade;
   - `tests/integration/api/`: as rotas FastAPI reais, ponta a ponta
@@ -156,7 +156,7 @@ open htmlcov/index.html
 
 A configuração de cobertura está em `pyproject.toml`
 (`[tool.coverage.run]` / `[tool.coverage.report]`). Ela cobre os pacotes de
-domínio, aplicação, infraestrutura e apresentação, e deixa de fora scripts
+domínio, aplicação, adaptadores (`adapters`) e apresentação, e deixa de fora scripts
 de linha de comando (`main.py`, `seed.py`, `create_schema.py`,
 seeders) e as interfaces
 abstratas de repositório (`domain/repositories/*`), que não têm lógica

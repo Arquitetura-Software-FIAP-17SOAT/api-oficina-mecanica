@@ -32,7 +32,7 @@ branch = true
 source = [
     "domain",
     "application",
-    "infrastructure",
+    "adapters",
     "presentation",
 ]
 omit = [
@@ -41,7 +41,7 @@ omit = [
     "main.py",
     "seed.py",
     "create_schema.py",
-    "infrastructure/database/seeders/*",
+    "adapters/database/seeders/*",
     # Contratos (ABCs) sem lógica própria — implementações concretas
     # é que são exercitadas pelos testes.
     "domain/repositories/*",

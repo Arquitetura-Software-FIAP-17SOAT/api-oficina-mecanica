@@ -1,5 +1,5 @@
-from infrastructure.database.database import SessionLocal
-from infrastructure.database.models import StatusOrdemServicoModel
+from adapters.database.database import SessionLocal
+from adapters.database.models import StatusOrdemServicoModel
 
 def seed_status_ordem_servico():
     """Popula o banco com status de Ordem de Serviço"""

@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 
-from infrastructure.config.security import decode_access_token
+from adapters.config.security import decode_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
