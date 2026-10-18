@@ -41,15 +41,14 @@ Acesse o diretório do projeto:
 cd api-oficina-mecanica
 ```
 
-Configure a chave que assina os tokens JWT — ela é obrigatória e não possui
-valor default (a aplicação não sobe sem ela). Crie um arquivo `.env` a partir
-do exemplo e preencha `JWT_SECRET_KEY` com um valor forte:
+Não é preciso configurar nada para a primeira execução: o `docker-compose.yml` já traz valores de
+**desenvolvimento** para as credenciais (veja "Credenciais de desenvolvimento" abaixo). Para trocá-los,
+crie um arquivo `.env` a partir do exemplo:
 
 ```bash
 cp .env.example .env
-# gere um segredo, ex.:
+# em produção, gere um segredo forte para JWT_SECRET_KEY, ex.:
 openssl rand -hex 32
-# e cole o valor em JWT_SECRET_KEY no .env
 ```
 
 Suba a aplicação:
@@ -65,9 +64,22 @@ O Docker Compose será responsável por subir:
 - Configurações necessárias para comunicação entre a API e o banco de dados
 
 A variável `DATABASE_URL` é configurada automaticamente pelo `docker-compose.yml`.
-As variáveis de autenticação (`JWT_SECRET_KEY`, `JWT_ALGORITHM`,
-`JWT_EXPIRE_MINUTES`) e a chave dos sistemas externos (`INTEGRACAO_API_KEY`, usada nas rotas
-`/integracoes`; sem ela essas rotas respondem 503) são lidas do `.env` — ver `.env.example`.
+### Credenciais de desenvolvimento
+
+Valores usados quando nada é definido no `.env` — **apenas para desenvolvimento e avaliação**, nunca
+para produção:
+
+| Variável | Valor padrão no compose | Para que serve |
+|---|---|---|
+| `JWT_SECRET_KEY` | `segredo-jwt-somente-para-desenvolvimento` | Assina os tokens JWT. A aplicação **não sobe sem ela** (o compose a fornece) |
+| `JWT_ALGORITHM` | `HS256` | Algoritmo do JWT |
+| `JWT_EXPIRE_MINUTES` | `60` | Validade do token |
+| `INTEGRACAO_API_KEY` | `chave-integracao-somente-para-desenvolvimento` | Cabeçalho `X-API-Key` das rotas `/integracoes` (sem ela, 503) |
+| `SEED_DADOS_EXEMPLO` | `true` | Cria o cliente `nilson@example.com` (senha `senha123`) e um veículo de exemplo |
+| `SQL_ECHO` | `false` | Imprime o SQL executado, para depuração |
+
+Fora do Docker, exporte `JWT_SECRET_KEY` (ou crie o `.env`) antes de iniciar a aplicação e os testes
+já definem um valor próprio.
 
 ## Como construir
 
