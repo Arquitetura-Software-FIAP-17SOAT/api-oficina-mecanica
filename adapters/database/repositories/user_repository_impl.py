@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from adapters.database.transaction import persistir
 from domain.entities.usuario import Usuario
 from domain.repositories.user_repository import UserRepository
 from adapters.database.models import UserModel
@@ -19,7 +20,7 @@ class UserRepositoryImpl(UserRepository):
         )
 
         self.db.add(model)
-        self.db.commit()
+        persistir(self.db)
         self.db.refresh(model)
 
         user.id = model.id

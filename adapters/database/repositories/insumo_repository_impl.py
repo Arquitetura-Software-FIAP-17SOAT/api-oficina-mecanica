@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from adapters.database.transaction import persistir
 from domain.entities.insumo import Insumo
 from domain.repositories.insumo_repository import InsumoRepository
 from adapters.database.models import InsumoModel, ServicoInsumoModel
@@ -37,7 +38,7 @@ class InsumoRepositoryImpl(InsumoRepository):
         )
 
         self.db.add(model)
-        self.db.commit()
+        persistir(self.db)
         self.db.refresh(model)
 
         insumo.id = model.id
@@ -85,7 +86,7 @@ class InsumoRepositoryImpl(InsumoRepository):
         model.estoque = insumo.estoque
         model.quantidade_minima = insumo.quantidade_minima
 
-        self.db.commit()
+        persistir(self.db)
 
         return insumo
 
@@ -96,7 +97,7 @@ class InsumoRepositoryImpl(InsumoRepository):
             return
 
         self.db.delete(model)
-        self.db.commit()
+        persistir(self.db)
 
     async def exists_by_nome(self, nome: str) -> bool:
         return (

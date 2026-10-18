@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from adapters.database.transaction import persistir
 from domain.entities.veiculo import Veiculo
 from domain.repositories.veiculo_repository import VeiculoRepository
 from domain.value_objects.data_hora import DataHora
@@ -42,7 +43,7 @@ class VeiculoRepositoryImpl(VeiculoRepository):
         )
 
         self.db.add(model)
-        self.db.commit()
+        persistir(self.db)
         self.db.refresh(model)
 
         veiculo.id = model.id
@@ -79,7 +80,7 @@ class VeiculoRepositoryImpl(VeiculoRepository):
         model.chassi = str(veiculo.chassi) if veiculo.chassi else None
         model.ano_fabricacao = veiculo.ano_fabricacao
 
-        self.db.commit()
+        persistir(self.db)
 
         return veiculo
 
@@ -90,7 +91,7 @@ class VeiculoRepositoryImpl(VeiculoRepository):
             return
 
         self.db.delete(model)
-        self.db.commit()
+        persistir(self.db)
 
     async def exists_by_placa(self, placa: str) -> bool:
         return (

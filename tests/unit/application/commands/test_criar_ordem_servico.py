@@ -7,6 +7,7 @@ from application.commands.criar_ordem_servico import (
     VeiculoNaoEncontradoError,
 )
 from domain.repositories.ordem_servico_repository import OrdemServicoRepository
+from tests.unit.fakes import UnitOfWorkFalso
 from domain.repositories.insumo_repository import InsumoRepository
 from domain.repositories.servico_repository import ServicoRepository
 from domain.repositories.veiculo_repository import VeiculoRepository
@@ -32,6 +33,7 @@ class TestCriarOrdemServicoUseCase:
             veiculo_repository=mock_veiculo_repository,
             servico_repository=AsyncMock(spec=ServicoRepository),
             insumo_repository=AsyncMock(spec=InsumoRepository),
+            unit_of_work=UnitOfWorkFalso(),
         )
 
         command = CriarOrdemServicoCommand(
@@ -65,6 +67,7 @@ class TestCriarOrdemServicoUseCase:
             veiculo_repository=mock_veiculo_repository,
             servico_repository=AsyncMock(spec=ServicoRepository),
             insumo_repository=AsyncMock(spec=InsumoRepository),
+            unit_of_work=UnitOfWorkFalso(),
         )
         
         command = CriarOrdemServicoCommand(
@@ -91,3 +94,39 @@ class TestCriarOrdemServicoUseCase:
         # Act & Assert
         assert str(error) == f"Veículo com ID {veiculo_id} não encontrado no banco de dados"
         assert isinstance(error, Exception)
+
+
+@pytest.mark.asyncio
+async def test_desfaz_a_transacao_quando_a_baixa_de_estoque_falha():
+    """OS e baixa de estoque formam uma unidade: se uma falha, nada é confirmado."""
+    from application.commands.criar_ordem_servico import InsumoSolicitado
+    from domain.entities.insumo import Insumo
+
+    veiculos = AsyncMock(spec=VeiculoRepository)
+    veiculos.find_by_id.return_value = Mock(id=1, cliente_id=1)
+    insumos = AsyncMock(spec=InsumoRepository)
+    insumos.find_by_id.return_value = Insumo(
+        id=10, nome="Filtro", preco_unitario="30.00", estoque=5
+    )
+    insumos.update.side_effect = RuntimeError("banco caiu")
+    unit_of_work = UnitOfWorkFalso()
+
+    use_case = CriarOrdemServicoUseCase(
+        ordem_servico_repository=AsyncMock(spec=OrdemServicoRepository),
+        veiculo_repository=veiculos,
+        servico_repository=AsyncMock(spec=ServicoRepository),
+        insumo_repository=insumos,
+        unit_of_work=unit_of_work,
+    )
+
+    with pytest.raises(RuntimeError):
+        await use_case.execute(
+            CriarOrdemServicoCommand(
+                veiculo_id="1",
+                descricao="Troca de filtro",
+                insumos=[InsumoSolicitado(insumo_id=10, quantidade=2)],
+            )
+        )
+
+    assert unit_of_work.confirmada == 0
+    assert unit_of_work.desfeita == 1

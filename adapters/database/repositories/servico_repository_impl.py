@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from adapters.database.transaction import persistir
 from domain.entities.servico import Servico
 from domain.repositories.servico_repository import ServicoRepository
 from adapters.database.models import (
@@ -37,7 +38,7 @@ class ServicoRepositoryImpl(ServicoRepository):
         )
 
         self.db.add(model)
-        self.db.commit()
+        persistir(self.db)
         self.db.refresh(model)
 
         servico.id = model.id
@@ -69,7 +70,7 @@ class ServicoRepositoryImpl(ServicoRepository):
         model.descricao = servico.descricao
         model.tempo_estimado = servico.tempo_estimado
 
-        self.db.commit()
+        persistir(self.db)
 
         return servico
 
@@ -80,7 +81,7 @@ class ServicoRepositoryImpl(ServicoRepository):
             return
 
         self.db.delete(model)
-        self.db.commit()
+        persistir(self.db)
 
     async def exists_by_nome(self, nome: str) -> bool:
         return (
