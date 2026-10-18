@@ -129,7 +129,13 @@ Criar manifestos YAML para deploy em Kubernetes, contemplando:
 - [ ] `Deployment`
 - [ ] `Service`
 - [ ] `ConfigMap` + `Secret` (variáveis sensíveis, ex. tokens de serviços externos)
+      Segredos da aplicação: `JWT_SECRET_KEY` e `INTEGRACAO_API_KEY` (a leitura da chave JWT precisa
+      ser corrigida antes — ver `docs/auditoria-conformidade.md`, seção 1).
 - [ ] `HorizontalPodAutoscaler` (escala por CPU/memória)
+- [ ] `Ingress` com limite de requisições (complementar ao enunciado): protege a consulta pública
+      `POST /consulta/ordens-servico` contra força bruta de CPF/CNPJ. Anotações do `ingress-nginx`
+      (`limit-rps` e `limit-connections`, por IP). Com várias réplicas sob HPA, o limite fica na
+      borda e não no processo da aplicação; é preciso repassar o IP real (`X-Forwarded-For`).
 
 ### Infraestrutura como Código (`/infra`, Terraform)
 Criar scripts em Terraform para:

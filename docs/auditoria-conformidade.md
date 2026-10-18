@@ -44,6 +44,10 @@ limite de tentativas, a força bruta de documentos é possível. Com várias ré
 contador precisa de armazenamento compartilhado (Redis ou equivalente) ou de um limite na borda
 (Ingress/API gateway).
 
+**Decisão:** limite por IP no `Ingress` (anotações `limit-rps`/`limit-connections` do
+`ingress-nginx`), incluído no plano de `/k8s`. É a opção de menor esforço e funciona com várias
+réplicas. Um limite por número de OS exigiria Redis e só vale se o limite por IP não bastar.
+
 - `presentation/api/routes/consulta_publica.py`
 
 ---
@@ -77,9 +81,10 @@ falha se `domain` ou `application` importarem `adapters`, `presentation` ou fram
 `presentation` usar `adapters` fora de `presentation/dependencies`.
 
 Pontos a manter sob observação:
-- `presentation/dependencies/auth_dependencies.py` importa `decode_access_token` direto de
-  `adapters`; uma porta `TokenDecoder` fecharia o último desvio (hoje permitido pelo teste por
-  estar na composição das dependências).
+- A validação do token passou a ficar atrás da porta `TokenDecoder`
+  (`application/ports/token_decoder.py`, implementada por `adapters/auth/jwt_token_decoder.py`).
+  `auth_dependencies.py` não importa mais `adapters` nem `jose`; o teste de arquitetura restringe
+  os arquivos de `presentation/dependencies` que podem tocar os adaptadores (só a composição).
 - As portas ficam em dois lugares: repositórios em `domain/repositories` e serviços
   (`PasswordHasher`, `TokenGenerator`) em `application/ports`. Intencional, mas vale manter o
   critério: persistência de agregados no domínio, serviços técnicos na aplicação.

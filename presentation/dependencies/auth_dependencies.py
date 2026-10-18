@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
 
-from adapters.config.security import decode_access_token
+from application.ports.token_decoder import TokenDecoder, TokenInvalidoError
+from presentation.dependencies.dependencies import get_token_decoder
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
@@ -13,17 +13,20 @@ CREDENCIAIS_INVALIDAS = HTTPException(
 )
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    token_decoder: TokenDecoder = Depends(get_token_decoder),
+) -> dict:
     """Valida o token JWT enviado no header ``Authorization: Bearer <token>``.
 
-    Reaproveita o mesmo par segredo/algoritmo usado por
-    ``create_access_token`` (login) para decodificar o token, e devolve o
-    payload (``sub``, ``email``, ``exp``) para uso nos endpoints protegidos.
+    A validação fica atrás da porta ``TokenDecoder``; aqui só se traduz o
+    resultado para HTTP. Devolve as claims (``sub``, ``email``, ``exp``) para
+    uso nos endpoints protegidos.
     """
 
     try:
-        payload = decode_access_token(token)
-    except JWTError:
+        payload = token_decoder.decode(token)
+    except TokenInvalidoError:
         raise CREDENCIAIS_INVALIDAS
 
     if payload.get("sub") is None:
