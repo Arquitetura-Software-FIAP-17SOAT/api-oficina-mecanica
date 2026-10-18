@@ -5,7 +5,7 @@ Router separado de ``ordens_servico.py`` pelo mesmo motivo de
 um sistema externo se autentica por chave de API (``X-API-Key``).
 """
 
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -14,14 +14,39 @@ from application.commands.aprovar_orcamento_ordem_servico import (
     AprovarOrcamentoOrdemServicoCommand,
     AprovarOrcamentoOrdemServicoUseCase,
 )
+from application.commands.entregar_ordem_servico import (
+    EntregarOrdemServicoCommand,
+    EntregarOrdemServicoUseCase,
+)
+from application.commands.enviar_ordem_servico_para_aprovacao import (
+    EnviarOrdemServicoParaAprovacaoCommand,
+    EnviarOrdemServicoParaAprovacaoUseCase,
+)
+from application.commands.finalizar_ordem_servico import (
+    FinalizarOrdemServicoCommand,
+    FinalizarOrdemServicoUseCase,
+)
+from application.commands.iniciar_diagnostico_ordem_servico import (
+    IniciarDiagnosticoOrdemServicoCommand,
+    IniciarDiagnosticoOrdemServicoUseCase,
+)
 from application.commands.rejeitar_orcamento_ordem_servico import (
     RejeitarOrcamentoOrdemServicoCommand,
     RejeitarOrcamentoOrdemServicoUseCase,
 )
+from application.commands.retornar_ordem_servico_para_diagnostico import (
+    RetornarOrdemServicoParaDiagnosticoCommand,
+    RetornarOrdemServicoParaDiagnosticoUseCase,
+)
 from presentation.api.error_handling import ordem_servico_ou_404, traduzir_erros
 from presentation.dependencies.dependencies import (
     get_aprovar_orcamento_use_case,
+    get_entregar_ordem_servico_use_case,
+    get_enviar_ordem_servico_para_aprovacao_use_case,
+    get_finalizar_ordem_servico_use_case,
+    get_iniciar_diagnostico_use_case,
     get_rejeitar_orcamento_use_case,
+    get_retornar_ordem_servico_para_diagnostico_use_case,
 )
 from presentation.dependencies.integracao_dependencies import validar_chave_integracao
 
@@ -88,4 +113,105 @@ async def receber_decisao_orcamento(
             status=ordem_servico.status.value,
             status_orcamento=ordem_servico.status_orcamento.value,
             message=mensagem,
+        )
+
+
+AcaoStatus = Literal[
+    "iniciar_diagnostico",
+    "enviar_para_aprovacao",
+    "retornar_para_diagnostico",
+    "finalizar",
+    "entregar",
+]
+
+
+class AtualizacaoStatusRequest(BaseModel):
+    """Pedido de mudança de status vindo de uma ferramenta externa (ex.: e-mail)."""
+
+    acao: AcaoStatus = Field(
+        description="Ação que muda o status da OS.",
+        examples=["iniciar_diagnostico"],
+    )
+    observacoes: Optional[str] = Field(
+        None,
+        description=(
+            "Texto livre do e-mail. Vira observação da OS (ou o motivo, em "
+            "`retornar_para_diagnostico`)."
+        ),
+    )
+
+
+class AtualizacaoStatusResponse(BaseModel):
+    ordem_servico_id: int
+    status: str
+    message: str
+
+
+@router.post(
+    "/ordens-servico/{ordem_id}/status",
+    response_model=AtualizacaoStatusResponse,
+    summary="Atualizar o status da OS por uma ferramenta externa",
+    description=(
+        "Recebe de uma ferramenta externa (por exemplo, um e-mail já "
+        "interpretado) a ação que muda o status da OS. As mesmas regras de "
+        "transição dos endpoints administrativos valem aqui; ação inválida "
+        "para o status atual retorna 400. A decisão sobre o orçamento tem "
+        "endpoint próprio (`/orcamento`). "
+        "**Autenticação por chave de API (header `X-API-Key`).**"
+    ),
+)
+async def atualizar_status_externo(
+    ordem_id: int,
+    request: AtualizacaoStatusRequest,
+    iniciar_diagnostico: IniciarDiagnosticoOrdemServicoUseCase = Depends(
+        get_iniciar_diagnostico_use_case
+    ),
+    enviar_para_aprovacao: EnviarOrdemServicoParaAprovacaoUseCase = Depends(
+        get_enviar_ordem_servico_para_aprovacao_use_case
+    ),
+    retornar_para_diagnostico: RetornarOrdemServicoParaDiagnosticoUseCase = Depends(
+        get_retornar_ordem_servico_para_diagnostico_use_case
+    ),
+    finalizar: FinalizarOrdemServicoUseCase = Depends(
+        get_finalizar_ordem_servico_use_case
+    ),
+    entregar: EntregarOrdemServicoUseCase = Depends(
+        get_entregar_ordem_servico_use_case
+    ),
+):
+    texto = request.observacoes
+
+    execucoes = {
+        "iniciar_diagnostico": lambda: iniciar_diagnostico.execute(
+            IniciarDiagnosticoOrdemServicoCommand(
+                ordem_servico_id=ordem_id, observacoes=texto
+            )
+        ),
+        "enviar_para_aprovacao": lambda: enviar_para_aprovacao.execute(
+            EnviarOrdemServicoParaAprovacaoCommand(
+                ordem_servico_id=ordem_id, orcamento=None, observacoes=texto
+            )
+        ),
+        "retornar_para_diagnostico": lambda: retornar_para_diagnostico.execute(
+            RetornarOrdemServicoParaDiagnosticoCommand(
+                ordem_servico_id=ordem_id, motivo=texto
+            )
+        ),
+        "finalizar": lambda: finalizar.execute(
+            FinalizarOrdemServicoCommand(ordem_servico_id=ordem_id, observacoes=texto)
+        ),
+        "entregar": lambda: entregar.execute(
+            EntregarOrdemServicoCommand(ordem_servico_id=ordem_id, observacoes=texto)
+        ),
+    }
+
+    with traduzir_erros("Erro ao atualizar o status da ordem de serviço"):
+        ordem_servico = ordem_servico_ou_404(
+            await execucoes[request.acao](), ordem_id
+        )
+
+        return AtualizacaoStatusResponse(
+            ordem_servico_id=ordem_servico.id,
+            status=ordem_servico.status.value,
+            message=f"Status atualizado para '{ordem_servico.status.value}'",
         )

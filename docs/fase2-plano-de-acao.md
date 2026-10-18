@@ -106,7 +106,15 @@ Verificar o que já existe em `presentation/api/routes/ordens_servico.py` e
         `ORDER BY` + `NOT IN`). As OS encerradas seguem no banco e consultáveis por
         `GET /ordens-servico/{id}`; filtrar `?status=Finalizada` ou `Entregue` devolve lista vazia.
         Testes em `tests/integration/api/test_listagem_ordens_servico_api.py`.
-- [ ] **Atualização de status da OS** via alguma ferramenta como e-mail.
+- [x] **Atualização de status da OS** via alguma ferramenta como e-mail.
+      Feito: `POST /integracoes/ordens-servico/{id}/status` recebe a ação já interpretada pela
+      ferramenta externa (por exemplo, um parser de e-mail), com `acao` entre `iniciar_diagnostico`,
+      `enviar_para_aprovacao`, `retornar_para_diagnostico`, `finalizar` e `entregar`, e
+      `observacoes` opcional (texto do e-mail). Mesma autenticação `X-API-Key` da aprovação de
+      orçamento (que continua em `/orcamento`) e os mesmos use cases das rotas administrativas,
+      então valem as mesmas regras de transição (ação inválida para o status atual: 400).
+      O endpoint não lê e-mails nem integra com um provedor: quem faz isso chama a API.
+      Testes em `tests/integration/api/test_integracoes_api.py`.
 
 ## 3. Infraestrutura
 
