@@ -58,11 +58,10 @@ perfil de administrador) para cadastrar usuários, ou criar o primeiro usuário 
 enunciado pede "autenticação JWT para APIs administrativas" e não detalha o cadastro; decidir e
 documentar.
 
-### 🟡 `INTEGRACAO_API_KEY` não chega ao container
-O `docker-compose.yml` não repassa `INTEGRACAO_API_KEY` à API (e não há `env_file`), então, subindo
-pelo compose, as rotas de `/integracoes` respondem sempre 503. Acrescentar a variável ao serviço
-`api`. No Swagger, a chave aparece como parâmetro de cabeçalho, sem o cadeado de segurança;
-declarar um esquema `APIKeyHeader` melhora a documentação (opcional).
+### 🟡 Chave de integração sem esquema de segurança no Swagger
+`INTEGRACAO_API_KEY` já é repassada ao container pelo `docker-compose.yml`. No Swagger, a chave
+aparece como parâmetro de cabeçalho, sem o cadeado de segurança; declarar um esquema `APIKeyHeader`
+melhora a documentação (opcional).
 
 ### 🟡 Sem rate limiting na consulta pública
 `POST /consulta/ordens-servico` é público (número da OS + CPF/CNPJ); sem limite de tentativas a
