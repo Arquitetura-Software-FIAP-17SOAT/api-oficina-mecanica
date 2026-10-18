@@ -4,7 +4,7 @@ Estado do repositório contra os enunciados das Fases 1 e 2 (`docs/fase1-plano-d
 `docs/fase2-plano-de-acao.md`). O que já foi resolvido aparece só em resumo; o detalhe dos achados
 corrigidos está no `git log`. Abaixo do resumo ficam **apenas os pontos em aberto**.
 
-- **Testes:** 668 (unitários + integração), cobertura ≈ 98% nos quatro pacotes.
+- **Testes:** 684 (unitários + integração), cobertura ≈ 98% nos quatro pacotes.
 - **Fase 1:** requisitos funcionais implementados e testados. Pendente só o que é externo ao código
   (vídeo, Event Storming, relatório de vulnerabilidades, PDF de entrega).
 - **Fase 2, código (seções 1 e 2 do plano):** concluído.
@@ -20,6 +20,7 @@ corrigidos está no `git log`. Abaixo do resumo ficam **apenas os pontos em aber
 | Portas e adaptadores | Hash de senha, geração e validação de JWT atrás de portas | `application/ports/`, `adapters/auth/` |
 | Atomicidade | OS + baixa de estoque numa única transação (abertura de OS, adicionar e remover insumo) | `application/ports/unit_of_work.py`, `adapters/database/transaction.py` |
 | Orçamento imutável em aprovação | Itens não mudam em `Aguardando aprovação`, `Finalizada` nem `Entregue` | `OrdemServico._validar_edicao_de_itens` |
+| Configuração da aplicação | `echo` do SQL controlado por `SQL_ECHO` (desligado por padrão); tabelas criadas na subida (`lifespan`), não ao importar o `main.py` | `adapters/database/database.py`, `main.py` |
 | APIs da Fase 2 | Abertura completa de OS, consulta de status, aprovação e atualização de status por sistema externo (`X-API-Key`), listagem ordenada com exclusão lógica | `presentation/api/routes/` |
 
 ---
@@ -88,10 +89,6 @@ e `insumos.py` (~380) concentram schemas, conversores e rotas no mesmo arquivo.
   real: remover o script ou adotar migrações (Alembic).
 - O catálogo de marcas e o padrão `SessionLocal()` manual (sem `try/finally`) se repetem entre
   seeders.
-
-### 🟡 Detalhes de infraestrutura no código
-- `echo=True` em `create_engine` imprime todo SQL em qualquer ambiente; deve ser configurável.
-- `create_tables()` executa ao importar `main.py` (efeito colateral na importação).
 
 ---
 
