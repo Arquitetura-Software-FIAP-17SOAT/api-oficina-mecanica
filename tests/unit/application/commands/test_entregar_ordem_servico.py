@@ -14,8 +14,8 @@ def _ordem_finalizada() -> OrdemServico:
     ordem = OrdemServico(veiculo_id="1", descricao="Revisão completa")
     ordem.id = 1
     ordem.iniciar_diagnostico()
-    ordem.enviar_para_aprovacao(orcamento=250.0)
     ordem.adicionar_item("10", 250.0)
+    ordem.enviar_para_aprovacao(orcamento=250.0)
     ordem.aprovar_e_iniciar_execucao()
     ordem.finalizar()
     return ordem
@@ -58,8 +58,8 @@ async def test_falha_ao_entregar_ordem_ainda_em_execucao():
     ordem = OrdemServico(veiculo_id="1", descricao="Revisão completa")
     ordem.id = 1
     ordem.iniciar_diagnostico()
-    ordem.enviar_para_aprovacao(orcamento=250.0)
     ordem.adicionar_item("10", 250.0)
+    ordem.enviar_para_aprovacao(orcamento=250.0)
     ordem.aprovar_e_iniciar_execucao()
 
     mock_repository = AsyncMock()

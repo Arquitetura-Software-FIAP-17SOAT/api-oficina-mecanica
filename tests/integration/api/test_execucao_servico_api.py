@@ -27,12 +27,12 @@ def _criar_ordem_em_execucao(client, db_session, servico_id):
     ).json()["id"]
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
     client.post(
-        f"/ordens-servico/{ordem_id}/enviar-aprovacao",
-        json={"orcamento": 200.0},
-    )
-    client.post(
         f"/ordens-servico/{ordem_id}/adicionar-item",
         json={"servico_id": str(servico_id), "quantidade": 1},
+    )
+    client.post(
+        f"/ordens-servico/{ordem_id}/enviar-aprovacao",
+        json={"orcamento": 200.0},
     )
     client.post(f"/ordens-servico/{ordem_id}/aprovar-executar")
 
