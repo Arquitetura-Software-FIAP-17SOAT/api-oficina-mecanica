@@ -81,8 +81,14 @@ Verificar o que já existe em `presentation/api/routes/ordens_servico.py` e
       Limitação conhecida: a gravação da OS e a baixa de estoque são commits separados, então uma
       falha de banco entre os dois não é revertida — tratada como unidade de trabalho em
       `docs/auditoria-conformidade.md` (seção 3).
-- [ ] **Consulta de status da OS**: informa a situação atual da OS, que é um dos estados — `Recebida`, `Diagnóstico`,
-      `Aguardando Aprovação`, `Execução`, `Finalizada`, `Entregue`.
+- [x] **Consulta de status da OS**: informa a situação atual da OS, que é um dos estados —
+      `Recebida`, `Diagnóstico`, `Aguardando Aprovação`, `Execução`, `Finalizada`, `Entregue`.
+      Feito (já coberto desde a Fase 1): `POST /consulta/ordens-servico` (cliente, sem login, por
+      número da OS + CPF/CNPJ) devolve `status` e `status_descricao`; `GET /ordens-servico/{id}`
+      (administrativo) devolve o `status` no detalhe. Teste que percorre os seis estados:
+      `test_consulta_acompanha_os_por_todos_os_status`.
+      Ponto de atenção: a API usa `Em diagnóstico` e `Em execução`; o enunciado da Fase 2 escreve
+      `Diagnóstico` e `Execução`. São os mesmos estados, só muda a grafia — sem ação necessária.
 - [ ] **Aprovação de orçamento**: endpoint para receber notificações externas de aprovação ou
       recusa do orçamento do cliente.
 - [ ] **Listagem de ordens de serviço**:

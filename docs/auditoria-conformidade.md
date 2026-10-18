@@ -73,10 +73,10 @@ Não existe nenhum mecanismo de entrada por e-mail ou equivalente. Precisa de de
 (webhook de um provedor, endpoint que recebe o e-mail já parseado, ou fila) e de endpoint com
 autenticação própria. Reutilizar os use cases de transição existentes.
 
-### 🟡 Nomenclatura dos status no contrato da API
-O enunciado da Fase 2 usa `Diagnóstico` e `Execução`; a API devolve `Em diagnóstico` e
-`Em execução` (nomes da Fase 1). Confirmar com a avaliação se é aceitável ou se a consulta de
-status deve expor os nomes novos.
+### 🟡 Nomenclatura dos status (ponto de atenção)
+O enunciado da Fase 2 escreve `Diagnóstico` e `Execução`; a API devolve `Em diagnóstico` e
+`Em execução`. São os mesmos estados, só muda a grafia. Sem ação necessária; manter só como
+observação para a apresentação.
 
 ---
 
