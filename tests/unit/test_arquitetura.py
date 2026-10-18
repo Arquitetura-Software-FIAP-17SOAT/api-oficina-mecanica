@@ -15,9 +15,15 @@ PROIBIDOS = {
     "adapters": ("presentation",),
 }
 
-# Apenas a composição das dependências (e a autenticação) conhece os adaptadores.
+# Apenas a composição das dependências conhece os adaptadores. A autenticação
+# (auth_dependencies.py) fica de fora de propósito: usa a porta TokenDecoder.
 PRESENTATION_PODE_IMPORTAR_ADAPTERS = {
-    "presentation/dependencies",
+    "presentation/dependencies/dependencies.py",
+    "presentation/dependencies/cliente_dependencies.py",
+    "presentation/dependencies/insumo_dependencies.py",
+    "presentation/dependencies/servico_dependencies.py",
+    "presentation/dependencies/veiculo_dependencies.py",
+    "presentation/dependencies/integracao_dependencies.py",
 }
 
 
@@ -51,10 +57,18 @@ def test_presentation_so_acessa_adapters_na_composicao_de_dependencias():
         f"{arquivo.relative_to(RAIZ)} importa adapters"
         for arquivo in _arquivos("presentation")
         if "adapters" in _imports(arquivo)
-        and not any(
-            arquivo.relative_to(RAIZ).as_posix().startswith(permitido)
-            for permitido in PRESENTATION_PODE_IMPORTAR_ADAPTERS
-        )
+        and arquivo.relative_to(RAIZ).as_posix()
+        not in PRESENTATION_PODE_IMPORTAR_ADAPTERS
+    ]
+
+    assert not violacoes, "\n".join(violacoes)
+
+
+def test_presentation_nao_depende_da_biblioteca_de_jwt():
+    violacoes = [
+        f"{arquivo.relative_to(RAIZ)} importa jose"
+        for arquivo in _arquivos("presentation")
+        if "jose" in _imports(arquivo)
     ]
 
     assert not violacoes, "\n".join(violacoes)

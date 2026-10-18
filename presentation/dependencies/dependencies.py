@@ -1,5 +1,6 @@
 from fastapi import Depends
 
+from application.ports.token_decoder import TokenDecoder
 from application.commands.login_user import LoginUserUseCase
 from application.commands.register_user import RegisterUserUseCase
 from application.commands.criar_ordem_servico import CriarOrdemServicoUseCase
@@ -50,6 +51,7 @@ from application.queries.list_ordens_servico import ListOrdensServicoUseCase
 from application.queries.list_tempo_medio_execucao import (
     ListTempoMedioExecucaoUseCase,
 )
+from adapters.auth.jwt_token_decoder import JWTTokenDecoder
 from adapters.auth.jwt_token_generator import JWTTokenGenerator
 from adapters.auth.password_hasher import BCryptPasswordHasher
 from adapters.database.database import get_db
@@ -75,6 +77,12 @@ from adapters.database.repositories.veiculo_repository_impl import (
 from adapters.database.repositories.ordem_servico_repository_impl import (
     OrdemServicoRepositoryImpl,
 )
+
+
+def get_token_decoder() -> TokenDecoder:
+    """Fornece o validador de tokens de acesso usado pela autenticação."""
+
+    return JWTTokenDecoder()
 
 
 def get_register_user_use_case(
