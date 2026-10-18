@@ -75,8 +75,12 @@ Verificar o que já existe em `presentation/api/routes/ordens_servico.py` e
 - [x] **Abertura de OS**: recebe os dados do cliente, veículo, serviços e peças; retorna a
       identificação única da OS.
       Feito: `POST /ordens-servico` aceita `cliente_id` (opcional, validado contra o dono do
-      veículo), `servicos` e `insumos`; valida tudo antes de gravar (OS, itens e baixa de estoque
-      são atômicos) e retorna o `id`. Testes em `tests/integration/api/test_abertura_os_completa_api.py`.
+      veículo), `servicos` e `insumos`; valida tudo antes de gravar (serviço/insumo inexistente ou
+      estoque insuficiente não criam a OS nem baixam estoque) e retorna o `id`. Testes em
+      `tests/integration/api/test_abertura_os_completa_api.py`.
+      Limitação conhecida: a gravação da OS e a baixa de estoque são commits separados, então uma
+      falha de banco entre os dois não é revertida — tratada como unidade de trabalho em
+      `docs/auditoria-conformidade.md` (seção 3).
 - [ ] **Consulta de status da OS**: informa a situação atual da OS, que é um dos estados — `Recebida`, `Diagnóstico`,
       `Aguardando Aprovação`, `Execução`, `Finalizada`, `Entregue`.
 - [ ] **Aprovação de orçamento**: endpoint para receber notificações externas de aprovação ou
