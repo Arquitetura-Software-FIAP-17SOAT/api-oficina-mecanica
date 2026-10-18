@@ -2,6 +2,87 @@
 
 Projeto de API em Python utilizando FastAPI, DDD e Clean Architecture.
 
+## Objetivos das fases
+
+**Fase 1 — MVP.** Back-end da oficina mecânica: gestão de ordens de serviço (OS), clientes,
+veículos, serviços e peças/insumos com controle de estoque, aplicando DDD, JWT e testes
+automatizados.
+
+**Fase 2 — qualidade, resiliência e escalabilidade.** Evoluir a aplicação da Fase 1 com código
+sustentável (Clean Code, Clean Architecture/Hexagonal, testes), novas APIs para a operação e
+integração com sistemas externos e, em seguida, infraestrutura automatizada (Docker, Kubernetes,
+Terraform e CI/CD) capaz de escalar nos horários de pico. O andamento está em
+[Estado da Fase 2](#estado-da-fase-2).
+
+## Arquitetura
+
+O código segue Clean Architecture / Arquitetura Hexagonal. A dependência sempre aponta para dentro:
+
+| Camada | Papel | Pode importar |
+|---|---|---|
+| `domain/` | Entidades, objetos de valor (CPF/CNPJ, placa, status) e contratos dos repositórios | só `domain` |
+| `application/` | Casos de uso (comandos e consultas) e portas de serviços (`application/ports`: hash de senha, geração e validação de JWT, unidade de trabalho) | `domain` |
+| `adapters/` | Implementações das portas: repositórios SQLAlchemy, BCrypt, JWT, configuração, seeders | `domain`, `application` |
+| `presentation/` | API REST (FastAPI): rotas, schemas, conversores e composição das dependências | `application`, `domain` e, só em `presentation/dependencies`, `adapters` |
+
+A regra é verificada automaticamente por `tests/unit/test_arquitetura.py`. Outras decisões:
+
+- **Transação única** para o que toca mais de um agregado (abertura de OS com peças, adicionar e
+  remover insumo): a OS e a baixa de estoque são confirmadas juntas ou nenhuma delas (unidade de
+  trabalho em `application/ports/unit_of_work.py`).
+- **Regras de negócio no domínio**: grafo de transição de status, orçamento calculado a partir dos
+  serviços e peças, bloqueio de edição de itens com a OS aguardando aprovação, finalizada ou entregue.
+- **Rotas enxutas**: schemas em `presentation/api/schemas/`, conversores em
+  `presentation/api/mappers/` e tradução de erros em `presentation/api/error_handling.py`.
+
+## APIs
+
+A documentação interativa (Swagger) fica em `http://localhost:8000/docs` com a aplicação rodando.
+
+**Autenticação.** Cadastre-se em `POST /users/register`, faça login em `POST /users/login` e envie o
+token em `Authorization: Bearer <token>`. Todas as rotas abaixo, exceto as marcadas como públicas,
+exigem o token.
+
+| Grupo | Rotas principais | Acesso |
+|---|---|---|
+| Usuários | `POST /users/register`, `POST /users/login` | público |
+| Clientes, Veículos, Serviços | CRUD em `/clientes`, `/veiculos`, `/servicos` | JWT |
+| Insumos e estoque | CRUD em `/insumos`; `/insumos/estoque-baixo`; `/insumos/{id}/estoque/entrada`, `/saida` e `/ajuste` | JWT |
+| Ordens de serviço | `POST /ordens-servico` (cliente, veículo, serviços e peças em uma chamada), `GET /ordens-servico` (paginada, filtros por status, CPF/CNPJ e placa), `GET /ordens-servico/{id}` | JWT |
+| Ciclo da OS | `iniciar-diagnostico`, `enviar-aprovacao`, `aprovar-executar`, `rejeitar-orcamento`, `retornar-diagnostico`, `finalizar`, `entregar`; `adicionar-item`, `remover-item`, `adicionar-insumo`, `remover-insumo` (todas `POST /ordens-servico/{id}/...`) | JWT |
+| Execução de serviço | `POST /ordens-servico/{id}/servicos/{servico_id}/iniciar` e `/finalizar`; `GET /ordens-servico/metricas/tempo-medio-execucao` | JWT |
+| Consulta do cliente | `POST /consulta/ordens-servico` (número da OS + CPF/CNPJ) | público |
+| Integrações externas | `POST /integracoes/ordens-servico/{id}/orcamento` (`aprovado`/`recusado`) e `/status` (ação enviada por uma ferramenta como e-mail) | chave `X-API-Key` |
+| Saúde | `GET /health` | público |
+
+**Ciclo de vida da OS:** `Recebida` → `Em diagnóstico` → `Aguardando aprovação` → `Em execução` →
+`Finalizada` → `Entregue` (a aprovação do orçamento leva a OS a "Em execução"; a recusa, a
+"Finalizada"). Em `GET /ordens-servico`, a listagem ordena por prioridade (Em execução, Aguardando
+aprovação, Em diagnóstico, Recebida), com as mais antigas primeiro, e **não lista** as OS Finalizadas
+e Entregues (exclusão lógica: continuam consultáveis pelo detalhe).
+
+## Estado da Fase 2
+
+| Item do enunciado | Situação |
+|---|---|
+| Clean Code | Concluído |
+| Clean Architecture / Hexagonal | Concluído (regra de dependência verificada por teste) |
+| Testes automatizados | Concluído: 704 testes, 99% de cobertura nos quatro pacotes |
+| API de abertura de OS (cliente, veículo, serviços e peças; devolve o id) | Concluída |
+| API de consulta de status da OS | Concluída |
+| API de aprovação de orçamento por notificação externa | Concluída (`/integracoes`) |
+| Listagem de OS (ordenação, mais antigas primeiro, exclusão lógica) | Concluída |
+| Atualização de status da OS por ferramenta externa (e-mail) | Concluída (`/integracoes`) |
+| Dockerfile e docker-compose revisados | Em andamento (existem e funcionam em desenvolvimento) |
+| Manifestos Kubernetes (`/k8s`) | Pendente |
+| Terraform (`/infra`) | Pendente |
+| Pipeline de CI/CD | Pendente |
+| Collection das APIs, desenho da arquitetura da infraestrutura e vídeo | Pendente |
+
+Os detalhes de cada item, os pontos de atenção e as pendências estão em
+[`docs/fase2-plano-de-acao.md`](docs/fase2-plano-de-acao.md) e
+[`docs/auditoria-conformidade.md`](docs/auditoria-conformidade.md).
+
 ## Banco de dados
 
 O sistema utiliza **PostgreSQL** como banco de dados. A escolha se justifica por:
