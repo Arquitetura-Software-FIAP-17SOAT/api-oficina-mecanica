@@ -99,16 +99,14 @@ CI/CD. Ajustes no que já existe, antes disso:
   e usa valores de desenvolvimento para as credenciais (intencional, documentado no README).
 - **Escalabilidade:** o vídeo precisa demonstrar a autoescala; `scripts/teste_fluxo_api.sh` pode
   servir de base para gerar múltiplas OS.
-- **README:** hoje só tem uma linha de apresentação; faltam os objetivos de cada fase. Incluir
-  arquitetura (componentes, infraestrutura, fluxo de deploy), execução local, deploy
-  em Kubernetes, Terraform, link da collection de APIs e link do vídeo.
-- **Documentação das APIs (collection):** hoje o README só cita o Swagger em
-  `http://localhost:8000/docs`, que exige a aplicação rodando. Falta:
+- **README:** já traz os objetivos das fases, a arquitetura em camadas, a tabela de APIs com o fluxo
+  de autenticação, o estado da Fase 2, as limitações conhecidas e as credenciais de desenvolvimento.
+  Falta o que depende da infraestrutura: desenho da arquitetura com os recursos provisionados e o
+  fluxo de deploy, deploy em Kubernetes, Terraform e o link do vídeo.
+- **Documentação das APIs (collection):** o README tem a tabela de rotas e cita o Swagger em
+  `http://localhost:8000/docs`, que exige a aplicação rodando. Falta um link permanente:
   - exportar o `openapi.json` (por script, a partir do próprio app) para `docs/`;
-  - gerar a collection do Postman a partir dele;
-  - uma seção "APIs" no README com os endpoints por grupo, o fluxo de autenticação (cadastro,
-    login e token Bearer), as rotas públicas (`/consulta`) e as de integração externa
-    (`/integracoes`, header `X-API-Key`), e os links para esses arquivos e para o `/docs`;
+  - gerar a collection do Postman a partir dele e linkar os dois no README.
 
 ---
 

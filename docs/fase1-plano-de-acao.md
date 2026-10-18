@@ -127,8 +127,8 @@ Itens conhecidos como **pendentes** pela última checagem (ver memória do proje
 
 - [x] APIs conforme os requisitos acima.
 - [x] `Dockerfile` e `docker-compose.yml` configurados (funcionamento do build não validado nesta revisão).
-- [ ] `README.md` completo com instruções de uso e objetivos.
-      Faltam os objetivos da fase (hoje só uma linha de apresentação) e a seção de APIs.
+- [x] `README.md` completo com instruções de uso e objetivos.
+      Verificado: objetivos das fases, arquitetura, tabela de APIs, execução, testes e cobertura.
 
 ---
 
@@ -136,8 +136,8 @@ Itens conhecidos como **pendentes** pela última checagem (ver memória do proje
 
 **Revisão de 2026-10-18:** itens das seções 1 a 3 e 5 conferidos contra o código, os testes
 (698, 99% de cobertura) e o `openapi.json` (47 operações). Estão marcados os que foram verificados;
-ficam em aberto o acesso do repositório a `soat-architecture` (configuração do GitHub), os
-objetivos no README e a seção 4. Os pontos de atenção encontrados estão em
+ficam em aberto o acesso do repositório a `soat-architecture` (configuração do GitHub) e a
+seção 4. Os pontos de atenção encontrados estão em
 `docs/auditoria-conformidade.md`.
 
 As seções 1–3 (fluxos, segurança, requisitos técnicos) estão **conformes**, com as ressalvas acima.

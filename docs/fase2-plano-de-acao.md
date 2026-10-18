@@ -159,11 +159,15 @@ Pipeline de CI/CD configurada (GitHub Actions, GitLab CI, etc.) que execute:
       manifestos Kubernetes em `/k8s`, scripts Terraform em `/infra` e arquivos de configuração da
       pipeline CI/CD.
 - [ ] `README.md` atualizado com:
-  - [ ] Descrição da solução e objetivos da fase.
+  - [x] Descrição da solução e objetivos da fase (README: "Objetivos das fases" e "Estado da
+        Fase 2").
   - [ ] Desenho da arquitetura proposta, incluindo: componentes da aplicação, infraestrutura
-        provisionada e fluxo de deploy.
+        provisionada e fluxo de deploy. (Componentes da aplicação: README, "Arquitetura"; faltam a
+        infraestrutura provisionada e o fluxo de deploy.)
   - [ ] Instruções: execução local, deploy em Kubernetes, provisionamento via Terraform.
-  - [ ] Link para a collection completa das APIs (Postman, Swagger ou similar).
+        (Execução local: feita; Kubernetes e Terraform: pendentes.)
+  - [ ] Link para a collection completa das APIs (Postman, Swagger ou similar). (O README já traz a
+        tabela de rotas e o link local do Swagger; falta o `openapi.json` exportado e a collection.)
   - [ ] Link para vídeo demonstrativo do ambiente em execução, publicado no YouTube ou Vimeo
         (público ou não listado), de até 15 minutos. Deve demonstrar: deploy da aplicação,
         execução do CI/CD, consumo das APIs e escalabilidade automática (pode simular aumento de
