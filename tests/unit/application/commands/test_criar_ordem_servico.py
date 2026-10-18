@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import Mock, AsyncMock
-from sqlalchemy.orm import Session
 
 from application.commands.criar_ordem_servico import (
     CriarOrdemServicoCommand,
@@ -8,6 +7,9 @@ from application.commands.criar_ordem_servico import (
     VeiculoNaoEncontradoError,
 )
 from domain.repositories.ordem_servico_repository import OrdemServicoRepository
+from domain.repositories.insumo_repository import InsumoRepository
+from domain.repositories.servico_repository import ServicoRepository
+from domain.repositories.veiculo_repository import VeiculoRepository
 
 
 class TestCriarOrdemServicoUseCase:
@@ -17,17 +19,19 @@ class TestCriarOrdemServicoUseCase:
     async def test_criar_ordem_servico_com_veiculo_valido(self):
         """Deve criar e persistir a ordem quando o veículo existe"""
         # Arrange
-        mock_db = Mock(spec=Session)
+        mock_veiculo_repository = AsyncMock(spec=VeiculoRepository)
         mock_repository = AsyncMock(spec=OrdemServicoRepository)
 
         # Mock do veículo existente
         mock_veiculo = Mock()
         mock_veiculo.id = 1
-        mock_db.query().filter().first.return_value = mock_veiculo
+        mock_veiculo_repository.find_by_id.return_value = mock_veiculo
 
         use_case = CriarOrdemServicoUseCase(
             ordem_servico_repository=mock_repository,
-            db=mock_db,
+            veiculo_repository=mock_veiculo_repository,
+            servico_repository=AsyncMock(spec=ServicoRepository),
+            insumo_repository=AsyncMock(spec=InsumoRepository),
         )
 
         command = CriarOrdemServicoCommand(
@@ -50,15 +54,17 @@ class TestCriarOrdemServicoUseCase:
     def test_falhar_ao_criar_ordem_com_veiculo_inexistente(self):
         """Deve lançar exceção quando veículo não existe"""
         # Arrange
-        mock_db = Mock(spec=Session)
+        mock_veiculo_repository = AsyncMock(spec=VeiculoRepository)
         mock_repository = AsyncMock(spec=OrdemServicoRepository)
         
         # Mock retornando nenhum veículo
-        mock_db.query().filter().first.return_value = None
+        mock_veiculo_repository.find_by_id.return_value = None
         
         use_case = CriarOrdemServicoUseCase(
             ordem_servico_repository=mock_repository,
-            db=mock_db,
+            veiculo_repository=mock_veiculo_repository,
+            servico_repository=AsyncMock(spec=ServicoRepository),
+            insumo_repository=AsyncMock(spec=InsumoRepository),
         )
         
         command = CriarOrdemServicoCommand(

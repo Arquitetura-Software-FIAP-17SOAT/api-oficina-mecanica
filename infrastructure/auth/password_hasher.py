@@ -1,18 +1,6 @@
-from abc import ABC, abstractmethod
-
 from passlib.context import CryptContext
 
-
-class PasswordHasher(ABC):
-    """Interface para geração e validação de senhas."""
-
-    @abstractmethod
-    def hash(self, password: str) -> str:
-        pass
-
-    @abstractmethod
-    def verify(self, password: str, hashed_password: str) -> bool:
-        pass
+from application.ports.password_hasher import PasswordHasher
 
 
 class BCryptPasswordHasher(PasswordHasher):

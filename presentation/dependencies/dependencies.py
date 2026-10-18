@@ -50,10 +50,14 @@ from application.queries.list_ordens_servico import ListOrdensServicoUseCase
 from application.queries.list_tempo_medio_execucao import (
     ListTempoMedioExecucaoUseCase,
 )
+from infrastructure.auth.jwt_token_generator import JWTTokenGenerator
 from infrastructure.auth.password_hasher import BCryptPasswordHasher
 from infrastructure.database.database import get_db
 from infrastructure.database.repositories.cliente_repository_impl import (
     ClienteRepositoryImpl,
+)
+from infrastructure.database.repositories.execucao_servico_repository_impl import (
+    ExecucaoServicoRepositoryImpl,
 )
 from infrastructure.database.repositories.insumo_repository_impl import (
     InsumoRepositoryImpl,
@@ -97,6 +101,7 @@ def get_login_user_use_case(
     return LoginUserUseCase(
         user_repository=repository,
         password_hasher=password_hasher,
+        token_generator=JWTTokenGenerator(),
     )
 
 
@@ -109,7 +114,9 @@ def get_criar_ordem_servico_use_case(
     
     return CriarOrdemServicoUseCase(
         ordem_servico_repository=repository,
-        db=db,
+        veiculo_repository=VeiculoRepositoryImpl(db),
+        servico_repository=ServicoRepositoryImpl(db),
+        insumo_repository=InsumoRepositoryImpl(db),
     )
 
 
@@ -275,7 +282,9 @@ def get_iniciar_execucao_servico_use_case(
 ) -> IniciarExecucaoServicoUseCase:
     """Factory para injeção de dependências do caso de uso de início de execução de serviço."""
 
-    return IniciarExecucaoServicoUseCase(db=db)
+    return IniciarExecucaoServicoUseCase(
+        execucao_repository=ExecucaoServicoRepositoryImpl(db),
+    )
 
 
 def get_finalizar_execucao_servico_use_case(
@@ -283,4 +292,6 @@ def get_finalizar_execucao_servico_use_case(
 ) -> FinalizarExecucaoServicoUseCase:
     """Factory para injeção de dependências do caso de uso de fim de execução de serviço."""
 
-    return FinalizarExecucaoServicoUseCase(db=db)
+    return FinalizarExecucaoServicoUseCase(
+        execucao_repository=ExecucaoServicoRepositoryImpl(db),
+    )

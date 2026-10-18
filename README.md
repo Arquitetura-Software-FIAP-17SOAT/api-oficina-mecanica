@@ -158,6 +158,6 @@ A configuração de cobertura está em `pyproject.toml`
 (`[tool.coverage.run]` / `[tool.coverage.report]`). Ela cobre os pacotes de
 domínio, aplicação, infraestrutura e apresentação, e deixa de fora scripts
 de linha de comando (`main.py`, `seed.py`, `create_schema.py`,
-`reset_marcas.py`, `consulta_ordem_servico.py`, seeders) e as interfaces
+seeders) e as interfaces
 abstratas de repositório (`domain/repositories/*`), que não têm lógica
 própria — a suíte mantém a cobertura acima de 80% nos domínios críticos.

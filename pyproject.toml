@@ -41,8 +41,6 @@ omit = [
     "main.py",
     "seed.py",
     "create_schema.py",
-    "reset_marcas.py",
-    "consulta_ordem_servico.py",
     "infrastructure/database/seeders/*",
     # Contratos (ABCs) sem lógica própria — implementações concretas
     # é que são exercitadas pelos testes.

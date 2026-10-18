@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from domain.entities.usuario import Usuario
 from domain.repositories.user_repository import UserRepository
-from infrastructure.auth.password_hasher import PasswordHasher
+from application.ports.password_hasher import PasswordHasher
 
 
 @dataclass
