@@ -77,6 +77,7 @@ from application.queries.list_ordens_servico import (
 from application.queries.list_tempo_medio_execucao import (
     ListTempoMedioExecucaoUseCase,
 )
+from presentation.api.error_handling import ordem_servico_ou_404, traduzir_erros
 from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.dependencies import (
     get_adicionar_item_ordem_servico_use_case,
@@ -132,11 +133,6 @@ class EnviarParaAprovacaoRequest(BaseModel):
         examples=[350.00],
     )
     observacoes: Optional[str] = Field(None, description="Observações")
-
-
-class AprovarRequest(BaseModel):
-    """Request para aprovar e iniciar execução"""
-    pass
 
 
 class AdicionarItemRequest(BaseModel):
@@ -320,228 +316,36 @@ class TempoMedioExecucaoResponse(BaseModel):
     tempo_medio_horas: float
     quantidade_execucoes: int
 
-# ==================== Endpoints ====================
 
-@router.post(
-    "",
-    response_model=CriarOrdemServicoResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Criar Ordem de Serviço",
-    description="Cria uma nova ordem de serviço com status inicial 'Recebida'",
-)
-async def criar_ordem_servico(
-    request: CriarOrdemServicoRequest,
-    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
-):
-    """
-    Cria uma nova ordem de serviço.
-    
-    A ordem de serviço é criada com status 'Recebida' e segue o fluxo:
-    - Recebida → Em diagnóstico → Aguardando aprovação → Em execução → Finalizada → Entregue
-    
-    Validações aplicadas:
-    - veiculo_id: obrigatório
-    - descricao: mínimo 3 caracteres, máximo 1000
-    - orcamento: opcional, deve ser positivo se informado
-    """
-    try:
-        command = CriarOrdemServicoCommand(
-            veiculo_id=request.veiculo_id,
-            descricao=request.descricao,
-            orcamento=request.orcamento,
-            observacoes=request.observacoes,
-        )
+# ==================== Helpers ====================
 
-        ordem_servico = await use_case.execute(command)
-
-        return CriarOrdemServicoResponse(
-            id=ordem_servico.id,
-            veiculo_id=ordem_servico.veiculo_id,
-            descricao=str(ordem_servico.descricao),
-            status=ordem_servico.status.value,
-        )
-
-    except VeiculoNaoEncontradoError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao criar ordem de serviço " + str(e),
-        )
+def _resposta_status(ordem_servico, message: str) -> StatusChangeResponse:
+    return StatusChangeResponse(
+        id=ordem_servico.id,
+        status=ordem_servico.status.value,
+        message=message,
+    )
 
 
-@router.get(
-    "",
-    response_model=OrdensServicoPaginadasResponse,
-    summary="Listar Ordens de Serviço",
-    description=(
-        "Lista as ordens de serviço com paginação, podendo ser filtradas por "
-        "status, CPF/CNPJ do cliente ou placa do veículo. "
-        "**Requer autenticação (Bearer token).**"
-    ),
-)
-async def listar_ordens_servico(
-    status_filtro: Optional[str] = Query(
-        None,
-        alias="status",
-        description="Filtra pelo status exato da OS (ex.: 'Em diagnóstico').",
-    ),
-    cpf_cnpj: Optional[str] = Query(
-        None, description="Filtra pelo CPF/CNPJ do cliente, com ou sem máscara."
-    ),
-    placa: Optional[str] = Query(
-        None, description="Filtra pela placa do veículo, com ou sem máscara."
-    ),
-    page: int = Query(1, ge=1, description="Número da página (a partir de 1)."),
-    page_size: int = Query(
-        10, ge=1, le=100, description="Quantidade de itens por página (máx. 100)."
-    ),
-    use_case: ListOrdensServicoUseCase = Depends(get_list_ordens_servico_use_case),
-):
-    """Lista ordens de serviço de forma paginada, com filtros opcionais."""
-    try:
-        resultado: OrdensServicoPaginadas = await use_case.execute(
-            ListOrdensServicoQuery(
-                status=status_filtro,
-                cpf_cnpj=cpf_cnpj,
-                placa=placa,
-                page=page,
-                page_size=page_size,
-            )
-        )
-
-        return OrdensServicoPaginadasResponse(
-            itens=[
-                OrdemServicoResponse(
-                    id=os.id,
-                    veiculo_id=os.veiculo_id,
-                    descricao=str(os.descricao),
-                    status=os.status.value,
-                    orcamento=os.orcamento,
-                    status_orcamento=os.status_orcamento.value,
-                    observacoes=os.observacoes,
-                    quantidade_servicos=len(os.itens),
-                )
-                for os in resultado.itens
-            ],
-            total=resultado.total,
-            page=resultado.page,
-            page_size=resultado.page_size,
-            total_paginas=resultado.total_paginas,
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao listar ordens de serviço",
-        )
+def _parse_data_iso(valor: Optional[str]) -> Optional[datetime]:
+    if not valor:
+        return None
+    return datetime.fromisoformat(valor.replace("Z", "+00:00"))
 
 
-@router.get(
-    "/metricas/tempo-medio-execucao",
-    response_model=list[TempoMedioExecucaoResponse],
-    summary="Tempo Médio de Execução por Serviço",
-    description=(
-        "Retorna, para cada serviço do catálogo com execuções concluídas, o "
-        "tempo médio em horas e a quantidade de execuções consideradas. "
-        "**Requer autenticação (Bearer token).**"
-    ),
-)
-async def listar_tempo_medio_execucao(
-    use_case: ListTempoMedioExecucaoUseCase = Depends(
-        get_list_tempo_medio_execucao_use_case
-    ),
-):
-    """Consulta a métrica de monitoramento do tempo médio de execução dos serviços."""
-    try:
-        metricas = await use_case.execute()
-
-        return [
-            TempoMedioExecucaoResponse(
-                servico_id=metrica.servico_id,
-                nome_servico=metrica.nome_servico,
-                tempo_medio_horas=metrica.tempo_medio_horas,
-                quantidade_execucoes=metrica.quantidade_execucoes,
-            )
-            for metrica in metricas
-        ]
-
-    except HTTPException:
-        raise
-
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao consultar tempo médio de execução",
-        )
+def _isoformat_ou_none(valor: Optional[datetime]) -> Optional[str]:
+    return valor.isoformat() if valor else None
 
 
-@router.get(
-    "/{ordem_id}",
-    response_model=OrdemServicoDetailResponse,
-    summary="Obter Ordem de Serviço",
-    description=(
-        "Retorna os dados completos de uma ordem de serviço: cliente, "
-        "veículo, serviços com suas peças/insumos, status e orçamento. "
-        "**Requer autenticação (Bearer token).**"
-    ),
-)
-async def obter_ordem_servico(
-    ordem_id: int,
-    use_case: GetOrdemServicoDetalhadaUseCase = Depends(
-        get_ordem_servico_detalhada_use_case
-    ),
-):
-    """
-    Obtém os detalhes completos de uma ordem de serviço.
-
-    Retorna:
-    - Dados do cliente e do veículo atendidos
-    - Status atual e orçamento
-    - Serviços adicionados, cada um com as peças/insumos que consome
-    - Valor total dos itens adicionados
-    """
-    try:
-        detalhe: OrdemServicoDetalhada | None = await use_case.execute(ordem_id)
-
-        if detalhe is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return _para_detail_response(detalhe)
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao obter ordem de serviço",
-        )
+def _para_execucao_response(resultado: dict) -> ExecucaoServicoResponse:
+    return ExecucaoServicoResponse(
+        ordem_servico_id=resultado["ordem_servico_id"],
+        servico_id=resultado["servico_id"],
+        data_inicio=_isoformat_ou_none(resultado["data_inicio"]),
+        data_fim=_isoformat_ou_none(resultado["data_fim"]),
+        tempo_execucao_horas=resultado.get("tempo_execucao_horas"),
+        mensagem=resultado["mensagem"],
+    )
 
 
 def _para_detail_response(
@@ -617,6 +421,172 @@ def _para_insumo_utilizado_response(
     )
 
 
+# ==================== Endpoints ====================
+
+@router.post(
+    "",
+    response_model=CriarOrdemServicoResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar Ordem de Serviço",
+    description="Cria uma nova ordem de serviço com status inicial 'Recebida'",
+)
+async def criar_ordem_servico(
+    request: CriarOrdemServicoRequest,
+    use_case: CriarOrdemServicoUseCase = Depends(get_criar_ordem_servico_use_case),
+):
+    """
+    Cria uma nova ordem de serviço.
+
+    A ordem de serviço é criada com status 'Recebida' e segue o fluxo:
+    - Recebida → Em diagnóstico → Aguardando aprovação → Em execução → Finalizada → Entregue
+
+    Validações aplicadas:
+    - veiculo_id: obrigatório
+    - descricao: mínimo 3 caracteres, máximo 1000
+    - orcamento: opcional, deve ser positivo se informado
+    """
+    with traduzir_erros(
+        "Erro ao criar ordem de serviço", nao_encontrado=(VeiculoNaoEncontradoError,)
+    ):
+        ordem_servico = await use_case.execute(
+            CriarOrdemServicoCommand(
+                veiculo_id=request.veiculo_id,
+                descricao=request.descricao,
+                orcamento=request.orcamento,
+                observacoes=request.observacoes,
+            )
+        )
+
+        return CriarOrdemServicoResponse(
+            id=ordem_servico.id,
+            veiculo_id=ordem_servico.veiculo_id,
+            descricao=str(ordem_servico.descricao),
+            status=ordem_servico.status.value,
+        )
+
+
+@router.get(
+    "",
+    response_model=OrdensServicoPaginadasResponse,
+    summary="Listar Ordens de Serviço",
+    description=(
+        "Lista as ordens de serviço com paginação, podendo ser filtradas por "
+        "status, CPF/CNPJ do cliente ou placa do veículo. "
+        "**Requer autenticação (Bearer token).**"
+    ),
+)
+async def listar_ordens_servico(
+    status_filtro: Optional[str] = Query(
+        None,
+        alias="status",
+        description="Filtra pelo status exato da OS (ex.: 'Em diagnóstico').",
+    ),
+    cpf_cnpj: Optional[str] = Query(
+        None, description="Filtra pelo CPF/CNPJ do cliente, com ou sem máscara."
+    ),
+    placa: Optional[str] = Query(
+        None, description="Filtra pela placa do veículo, com ou sem máscara."
+    ),
+    page: int = Query(1, ge=1, description="Número da página (a partir de 1)."),
+    page_size: int = Query(
+        10, ge=1, le=100, description="Quantidade de itens por página (máx. 100)."
+    ),
+    use_case: ListOrdensServicoUseCase = Depends(get_list_ordens_servico_use_case),
+):
+    """Lista ordens de serviço de forma paginada, com filtros opcionais."""
+    with traduzir_erros("Erro ao listar ordens de serviço"):
+        resultado: OrdensServicoPaginadas = await use_case.execute(
+            ListOrdensServicoQuery(
+                status=status_filtro,
+                cpf_cnpj=cpf_cnpj,
+                placa=placa,
+                page=page,
+                page_size=page_size,
+            )
+        )
+
+        return OrdensServicoPaginadasResponse(
+            itens=[
+                OrdemServicoResponse(
+                    id=os.id,
+                    veiculo_id=os.veiculo_id,
+                    descricao=str(os.descricao),
+                    status=os.status.value,
+                    orcamento=os.orcamento,
+                    status_orcamento=os.status_orcamento.value,
+                    observacoes=os.observacoes,
+                    quantidade_servicos=len(os.itens),
+                )
+                for os in resultado.itens
+            ],
+            total=resultado.total,
+            page=resultado.page,
+            page_size=resultado.page_size,
+            total_paginas=resultado.total_paginas,
+        )
+
+
+@router.get(
+    "/metricas/tempo-medio-execucao",
+    response_model=list[TempoMedioExecucaoResponse],
+    summary="Tempo Médio de Execução por Serviço",
+    description=(
+        "Retorna, para cada serviço do catálogo com execuções concluídas, o "
+        "tempo médio em horas e a quantidade de execuções consideradas. "
+        "**Requer autenticação (Bearer token).**"
+    ),
+)
+async def listar_tempo_medio_execucao(
+    use_case: ListTempoMedioExecucaoUseCase = Depends(
+        get_list_tempo_medio_execucao_use_case
+    ),
+):
+    """Consulta a métrica de monitoramento do tempo médio de execução dos serviços."""
+    with traduzir_erros("Erro ao consultar tempo médio de execução"):
+        metricas = await use_case.execute()
+
+        return [
+            TempoMedioExecucaoResponse(
+                servico_id=metrica.servico_id,
+                nome_servico=metrica.nome_servico,
+                tempo_medio_horas=metrica.tempo_medio_horas,
+                quantidade_execucoes=metrica.quantidade_execucoes,
+            )
+            for metrica in metricas
+        ]
+
+
+@router.get(
+    "/{ordem_id}",
+    response_model=OrdemServicoDetailResponse,
+    summary="Obter Ordem de Serviço",
+    description=(
+        "Retorna os dados completos de uma ordem de serviço: cliente, "
+        "veículo, serviços com suas peças/insumos, status e orçamento. "
+        "**Requer autenticação (Bearer token).**"
+    ),
+)
+async def obter_ordem_servico(
+    ordem_id: int,
+    use_case: GetOrdemServicoDetalhadaUseCase = Depends(
+        get_ordem_servico_detalhada_use_case
+    ),
+):
+    """
+    Obtém os detalhes completos de uma ordem de serviço.
+
+    Retorna:
+    - Dados do cliente e do veículo atendidos
+    - Status atual e orçamento
+    - Serviços adicionados, cada um com as peças/insumos que consome
+    - Valor total dos itens adicionados
+    """
+    with traduzir_erros("Erro ao obter ordem de serviço"):
+        detalhe: OrdemServicoDetalhada | None = await use_case.execute(ordem_id)
+
+        return _para_detail_response(ordem_servico_ou_404(detalhe, ordem_id))
+
+
 @router.post(
     "/{ordem_id}/iniciar-diagnostico",
     response_model=StatusChangeResponse,
@@ -631,40 +601,18 @@ async def iniciar_diagnostico(
     ),
 ):
     """Inicia o diagnóstico de uma ordem de serviço"""
-    try:
-        ordem_servico = await use_case.execute(
-            IniciarDiagnosticoOrdemServicoCommand(
-                ordem_servico_id=ordem_id,
-                observacoes=request.observacoes,
-            )
+    with traduzir_erros("Erro ao iniciar diagnóstico"):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                IniciarDiagnosticoOrdemServicoCommand(
+                    ordem_servico_id=ordem_id,
+                    observacoes=request.observacoes,
+                )
+            ),
+            ordem_id,
         )
 
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message="Diagnóstico iniciado com sucesso",
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao iniciar diagnóstico",
-        )
+        return _resposta_status(ordem_servico, "Diagnóstico iniciado com sucesso")
 
 
 @router.post(
@@ -681,43 +629,21 @@ async def enviar_para_aprovacao(
     ),
 ):
     """Envia ordem de serviço para aprovação do cliente"""
-    try:
-        ordem_servico = await use_case.execute(
-            EnviarOrdemServicoParaAprovacaoCommand(
-                ordem_servico_id=ordem_id,
-                orcamento=request.orcamento,
-                observacoes=request.observacoes,
-            )
-        )
-
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message=(
-                "Ordem enviada para aprovação. "
-                f"Orçamento: R$ {ordem_servico.orcamento:.2f}"
+    with traduzir_erros("Erro ao enviar para aprovação"):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                EnviarOrdemServicoParaAprovacaoCommand(
+                    ordem_servico_id=ordem_id,
+                    orcamento=request.orcamento,
+                    observacoes=request.observacoes,
+                )
             ),
+            ordem_id,
         )
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao enviar para aprovação",
+        return _resposta_status(
+            ordem_servico,
+            f"Ordem enviada para aprovação. Orçamento: R$ {ordem_servico.orcamento:.2f}",
         )
 
 
@@ -735,46 +661,23 @@ async def adicionar_item(
     ),
 ):
     """Adiciona um serviço à ordem de serviço"""
-    try:
-        ordem_servico = await use_case.execute(
-            AdicionarItemOrdemServicoCommand(
-                ordem_servico_id=ordem_id,
-                servico_id=request.servico_id,
-                quantidade=request.quantidade,
-            )
+    with traduzir_erros(
+        "Erro ao adicionar serviço", nao_encontrado=(ServicoNaoEncontradoError,)
+    ):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                AdicionarItemOrdemServicoCommand(
+                    ordem_servico_id=ordem_id,
+                    servico_id=request.servico_id,
+                    quantidade=request.quantidade,
+                )
+            ),
+            ordem_id,
         )
 
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message=f"Serviço adicionado. Total de serviços: {len(ordem_servico.itens)}",
-        )
-
-    except ServicoNaoEncontradoError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao adicionar serviço",
+        return _resposta_status(
+            ordem_servico,
+            f"Serviço adicionado. Total de serviços: {len(ordem_servico.itens)}",
         )
 
 
@@ -792,39 +695,20 @@ async def remover_item(
     ),
 ):
     """Remove um serviço da ordem de serviço"""
-    try:
-        ordem_servico = await use_case.execute(
-            RemoverItemOrdemServicoCommand(
-                ordem_servico_id=ordem_id,
-                servico_id=request.servico_id,
-            )
+    with traduzir_erros("Erro ao remover serviço"):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                RemoverItemOrdemServicoCommand(
+                    ordem_servico_id=ordem_id,
+                    servico_id=request.servico_id,
+                )
+            ),
+            ordem_id,
         )
 
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message=f"Serviço removido. Total de serviços: {len(ordem_servico.itens)}",
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao remover serviço",
+        return _resposta_status(
+            ordem_servico,
+            f"Serviço removido. Total de serviços: {len(ordem_servico.itens)}",
         )
 
 
@@ -845,49 +729,23 @@ async def adicionar_insumo(
     ),
 ):
     """Registra o consumo de um insumo avulso na ordem de serviço"""
-    try:
-        ordem_servico = await use_case.execute(
-            AdicionarInsumoOrdemServicoCommand(
-                ordem_servico_id=ordem_id,
-                insumo_id=request.insumo_id,
-                quantidade=request.quantidade,
-            )
-        )
-
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message=(
-                "Insumo adicionado. Total de insumos: "
-                f"{len(ordem_servico.insumos_utilizados)}"
+    with traduzir_erros(
+        "Erro ao adicionar insumo", nao_encontrado=(InsumoNaoEncontradoError,)
+    ):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                AdicionarInsumoOrdemServicoCommand(
+                    ordem_servico_id=ordem_id,
+                    insumo_id=request.insumo_id,
+                    quantidade=request.quantidade,
+                )
             ),
+            ordem_id,
         )
 
-    except InsumoNaoEncontradoError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao adicionar insumo",
+        return _resposta_status(
+            ordem_servico,
+            f"Insumo adicionado. Total de insumos: {len(ordem_servico.insumos_utilizados)}",
         )
 
 
@@ -908,42 +766,20 @@ async def remover_insumo(
     ),
 ):
     """Remove um insumo avulso da ordem de serviço"""
-    try:
-        ordem_servico = await use_case.execute(
-            RemoverInsumoOrdemServicoCommand(
-                ordem_servico_id=ordem_id,
-                insumo_id=request.insumo_id,
-            )
-        )
-
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message=(
-                "Insumo removido. Total de insumos: "
-                f"{len(ordem_servico.insumos_utilizados)}"
+    with traduzir_erros("Erro ao remover insumo"):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                RemoverInsumoOrdemServicoCommand(
+                    ordem_servico_id=ordem_id,
+                    insumo_id=request.insumo_id,
+                )
             ),
+            ordem_id,
         )
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao remover insumo",
+        return _resposta_status(
+            ordem_servico,
+            f"Insumo removido. Total de insumos: {len(ordem_servico.insumos_utilizados)}",
         )
 
 
@@ -966,37 +802,15 @@ async def aprovar_e_executar(
     de status e a persistência ficam encapsuladas em
     ``AprovarOrcamentoOrdemServicoUseCase``.
     """
-    try:
-        ordem_servico = await use_case.execute(
-            AprovarOrcamentoOrdemServicoCommand(ordem_servico_id=ordem_id)
+    with traduzir_erros("Erro ao aprovar execução"):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                AprovarOrcamentoOrdemServicoCommand(ordem_servico_id=ordem_id)
+            ),
+            ordem_id,
         )
 
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message="Ordem aprovada e execução iniciada",
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao aprovar execução",
-        )
+        return _resposta_status(ordem_servico, "Ordem aprovada e execução iniciada")
 
 
 @router.post(
@@ -1012,36 +826,16 @@ async def rejeitar_orcamento(
     ),
 ):
     """Rejeita o orçamento e encerra a ordem de serviço."""
-    try:
-        ordem_servico = await use_case.execute(
-            RejeitarOrcamentoOrdemServicoCommand(ordem_servico_id=ordem_id)
+    with traduzir_erros("Erro ao rejeitar orçamento"):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                RejeitarOrcamentoOrdemServicoCommand(ordem_servico_id=ordem_id)
+            ),
+            ordem_id,
         )
 
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message="Orçamento rejeitado e ordem de serviço finalizada",
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao rejeitar orçamento",
+        return _resposta_status(
+            ordem_servico, "Orçamento rejeitado e ordem de serviço finalizada"
         )
 
 
@@ -1059,40 +853,18 @@ async def finalizar(
     ),
 ):
     """Finaliza a ordem de serviço"""
-    try:
-        ordem_servico = await use_case.execute(
-            FinalizarOrdemServicoCommand(
-                ordem_servico_id=ordem_id,
-                observacoes=request.observacoes,
-            )
+    with traduzir_erros("Erro ao finalizar ordem"):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                FinalizarOrdemServicoCommand(
+                    ordem_servico_id=ordem_id,
+                    observacoes=request.observacoes,
+                )
+            ),
+            ordem_id,
         )
 
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message="Ordem finalizada com sucesso",
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao finalizar ordem",
-        )
+        return _resposta_status(ordem_servico, "Ordem finalizada com sucesso")
 
 
 @router.post(
@@ -1109,40 +881,18 @@ async def entregar(
     ),
 ):
     """Entrega a ordem de serviço ao cliente"""
-    try:
-        ordem_servico = await use_case.execute(
-            EntregarOrdemServicoCommand(
-                ordem_servico_id=ordem_id,
-                observacoes=request.observacoes,
-            )
+    with traduzir_erros("Erro ao entregar ordem"):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                EntregarOrdemServicoCommand(
+                    ordem_servico_id=ordem_id,
+                    observacoes=request.observacoes,
+                )
+            ),
+            ordem_id,
         )
 
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message="Ordem entregue com sucesso",
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao entregar ordem",
-        )
+        return _resposta_status(ordem_servico, "Ordem entregue com sucesso")
 
 
 @router.post(
@@ -1159,40 +909,18 @@ async def retornar_diagnostico(
     ),
 ):
     """Retorna a ordem de serviço para diagnóstico"""
-    try:
-        ordem_servico = await use_case.execute(
-            RetornarOrdemServicoParaDiagnosticoCommand(
-                ordem_servico_id=ordem_id,
-                motivo=request.motivo,
-            )
+    with traduzir_erros("Erro ao retornar para diagnóstico"):
+        ordem_servico = ordem_servico_ou_404(
+            await use_case.execute(
+                RetornarOrdemServicoParaDiagnosticoCommand(
+                    ordem_servico_id=ordem_id,
+                    motivo=request.motivo,
+                )
+            ),
+            ordem_id,
         )
 
-        if ordem_servico is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ordem de serviço {ordem_id} não encontrada",
-            )
-
-        return StatusChangeResponse(
-            id=ordem_servico.id,
-            status=ordem_servico.status.value,
-            message="Ordem retornada para diagnóstico",
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao retornar para diagnóstico",
-        )
+        return _resposta_status(ordem_servico, "Ordem retornada para diagnóstico")
 
 
 @router.post(
@@ -1218,48 +946,19 @@ async def iniciar_execucao_servico(
     - Serviço não pode já ter começado
     - data_inicio não pode ser no futuro
     """
-    try:
-        # Parse data_inicio se fornecida
-        data_inicio = None
-        if request.data_inicio:
-            data_inicio = datetime.fromisoformat(request.data_inicio.replace('Z', '+00:00'))
-
-        command = IniciarExecucaoServicoCommand(
-            ordem_servico_id=ordem_id,
-            servico_id=servico_id,
-            data_inicio=data_inicio,
+    with traduzir_erros(
+        "Erro ao iniciar execução do serviço",
+        nao_encontrado=(OrdemServicoNaoEncontradaError,),
+    ):
+        resultado = await use_case.execute(
+            IniciarExecucaoServicoCommand(
+                ordem_servico_id=ordem_id,
+                servico_id=servico_id,
+                data_inicio=_parse_data_iso(request.data_inicio),
+            )
         )
 
-        resultado = await use_case.execute(command)
-
-        return ExecucaoServicoResponse(
-            ordem_servico_id=resultado["ordem_servico_id"],
-            servico_id=resultado["servico_id"],
-            data_inicio=resultado["data_inicio"].isoformat() if resultado["data_inicio"] else None,
-            data_fim=resultado["data_fim"].isoformat() if resultado["data_fim"] else None,
-            mensagem=resultado["mensagem"],
-        )
-
-    except OrdemServicoNaoEncontradaError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao iniciar execução do serviço",
-        )
+        return _para_execucao_response(resultado)
 
 
 @router.post(
@@ -1288,46 +987,16 @@ async def finalizar_execucao_servico(
     - data_fim não pode ser anterior a data_inicio
     - data_fim não pode ser no futuro
     """
-    try:
-        # Parse data_fim se fornecida
-        data_fim = None
-        if request.data_fim:
-            data_fim = datetime.fromisoformat(request.data_fim.replace('Z', '+00:00'))
-
-        command = FinalizarExecucaoServicoCommand(
-            ordem_servico_id=ordem_id,
-            servico_id=servico_id,
-            data_fim=data_fim,
+    with traduzir_erros(
+        "Erro ao finalizar execução do serviço",
+        nao_encontrado=(OrdemServicoNaoEncontradaError,),
+    ):
+        resultado = await use_case.execute(
+            FinalizarExecucaoServicoCommand(
+                ordem_servico_id=ordem_id,
+                servico_id=servico_id,
+                data_fim=_parse_data_iso(request.data_fim),
+            )
         )
 
-        resultado = await use_case.execute(command)
-
-        return ExecucaoServicoResponse(
-            ordem_servico_id=resultado["ordem_servico_id"],
-            servico_id=resultado["servico_id"],
-            data_inicio=resultado["data_inicio"].isoformat() if resultado["data_inicio"] else None,
-            data_fim=resultado["data_fim"].isoformat() if resultado["data_fim"] else None,
-            tempo_execucao_horas=resultado["tempo_execucao_horas"],
-            mensagem=resultado["mensagem"],
-        )
-
-    except OrdemServicoNaoEncontradaError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao finalizar execução do serviço",
-        )
+        return _para_execucao_response(resultado)
