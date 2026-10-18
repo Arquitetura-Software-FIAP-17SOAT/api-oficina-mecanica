@@ -7,6 +7,8 @@ from application.commands.criar_ordem_servico import (
     VeiculoNaoEncontradoError,
 )
 from domain.repositories.ordem_servico_repository import OrdemServicoRepository
+from domain.repositories.insumo_repository import InsumoRepository
+from domain.repositories.servico_repository import ServicoRepository
 from domain.repositories.veiculo_repository import VeiculoRepository
 
 
@@ -28,6 +30,8 @@ class TestCriarOrdemServicoUseCase:
         use_case = CriarOrdemServicoUseCase(
             ordem_servico_repository=mock_repository,
             veiculo_repository=mock_veiculo_repository,
+            servico_repository=AsyncMock(spec=ServicoRepository),
+            insumo_repository=AsyncMock(spec=InsumoRepository),
         )
 
         command = CriarOrdemServicoCommand(
@@ -59,6 +63,8 @@ class TestCriarOrdemServicoUseCase:
         use_case = CriarOrdemServicoUseCase(
             ordem_servico_repository=mock_repository,
             veiculo_repository=mock_veiculo_repository,
+            servico_repository=AsyncMock(spec=ServicoRepository),
+            insumo_repository=AsyncMock(spec=InsumoRepository),
         )
         
         command = CriarOrdemServicoCommand(

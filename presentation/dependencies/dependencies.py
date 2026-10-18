@@ -115,6 +115,8 @@ def get_criar_ordem_servico_use_case(
     return CriarOrdemServicoUseCase(
         ordem_servico_repository=repository,
         veiculo_repository=VeiculoRepositoryImpl(db),
+        servico_repository=ServicoRepositoryImpl(db),
+        insumo_repository=InsumoRepositoryImpl(db),
     )
 
 

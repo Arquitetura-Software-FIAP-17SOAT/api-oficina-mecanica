@@ -6,6 +6,8 @@ from datetime import datetime
 from application.commands.criar_ordem_servico import (
     CriarOrdemServicoCommand,
     CriarOrdemServicoUseCase,
+    InsumoSolicitado,
+    ServicoSolicitado,
     VeiculoNaoEncontradoError,
 )
 from application.commands.adicionar_item_ordem_servico import (
@@ -108,9 +110,35 @@ router = APIRouter(
 
 # ==================== Requests ====================
 
+class ServicoSolicitadoRequest(BaseModel):
+    """Serviço do catálogo solicitado na abertura da OS"""
+    servico_id: str = Field(..., description="ID do serviço")
+    quantidade: int = Field(1, description="Quantidade")
+
+
+class InsumoSolicitadoRequest(BaseModel):
+    """Peça/insumo solicitado na abertura da OS"""
+    insumo_id: int = Field(..., description="ID do insumo")
+    quantidade: int = Field(1, description="Quantidade")
+
+
 class CriarOrdemServicoRequest(BaseModel):
     """Request para criar uma nova ordem de serviço"""
     veiculo_id: str = Field(..., description="ID do veículo")
+    cliente_id: Optional[int] = Field(
+        None,
+        description=(
+            "ID do cliente. Opcional: o cliente é o dono do veículo; se informado, "
+            "precisa ser o dono do veículo."
+        ),
+    )
+    servicos: list[ServicoSolicitadoRequest] = Field(
+        default_factory=list, description="Serviços a executar"
+    )
+    insumos: list[InsumoSolicitadoRequest] = Field(
+        default_factory=list,
+        description="Peças/insumos a usar (dão baixa no estoque)",
+    )
     descricao: str = Field(..., description="Descrição da ordem de serviço")
     orcamento: Optional[float] = Field(None, description="Orçamento estimado")
     observacoes: Optional[str] = Field(None, description="Observações adicionais")
@@ -211,6 +239,8 @@ class CriarOrdemServicoResponse(BaseModel):
     veiculo_id: str
     descricao: str
     status: str
+    quantidade_servicos: int = 0
+    quantidade_insumos: int = 0
     message: str = "Ordem de serviço criada com sucesso"
 
 
@@ -446,7 +476,12 @@ async def criar_ordem_servico(
     - orcamento: opcional, deve ser positivo se informado
     """
     with traduzir_erros(
-        "Erro ao criar ordem de serviço", nao_encontrado=(VeiculoNaoEncontradoError,)
+        "Erro ao criar ordem de serviço",
+        nao_encontrado=(
+            VeiculoNaoEncontradoError,
+            ServicoNaoEncontradoError,
+            InsumoNaoEncontradoError,
+        ),
     ):
         ordem_servico = await use_case.execute(
             CriarOrdemServicoCommand(
@@ -454,6 +489,15 @@ async def criar_ordem_servico(
                 descricao=request.descricao,
                 orcamento=request.orcamento,
                 observacoes=request.observacoes,
+                cliente_id=request.cliente_id,
+                servicos=[
+                    ServicoSolicitado(servico_id=s.servico_id, quantidade=s.quantidade)
+                    for s in request.servicos
+                ],
+                insumos=[
+                    InsumoSolicitado(insumo_id=i.insumo_id, quantidade=i.quantidade)
+                    for i in request.insumos
+                ],
             )
         )
 
@@ -462,6 +506,8 @@ async def criar_ordem_servico(
             veiculo_id=ordem_servico.veiculo_id,
             descricao=str(ordem_servico.descricao),
             status=ordem_servico.status.value,
+            quantidade_servicos=len(ordem_servico.itens),
+            quantidade_insumos=len(ordem_servico.insumos_utilizados),
         )
 
 
