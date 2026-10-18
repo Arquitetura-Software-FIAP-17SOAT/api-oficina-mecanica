@@ -126,8 +126,8 @@ Criar manifestos YAML para deploy em Kubernetes, contemplando:
 - [ ] `Deployment`
 - [ ] `Service`
 - [ ] `ConfigMap` + `Secret` (variáveis sensíveis, ex. tokens de serviços externos)
-      Segredos da aplicação: `JWT_SECRET_KEY` e `INTEGRACAO_API_KEY` (a leitura da chave JWT precisa
-      ser corrigida antes — ver `docs/auditoria-conformidade.md`, seção 1).
+      Segredos da aplicação: `JWT_SECRET_KEY` (obrigatória, a aplicação não sobe sem ela) e
+      `INTEGRACAO_API_KEY`. Podem reutilizar os valores de desenvolvimento do README.
 - [ ] `HorizontalPodAutoscaler` (escala por CPU/memória)
 - [ ] `Ingress` com limite de requisições (complementar ao enunciado): protege a consulta pública
       `POST /consulta/ordens-servico` contra força bruta de CPF/CNPJ. Anotações do `ingress-nginx`

@@ -4,7 +4,7 @@ Estado do repositório contra os enunciados das Fases 1 e 2 (`docs/fase1-plano-d
 `docs/fase2-plano-de-acao.md`). O que já foi resolvido aparece só em resumo; o detalhe dos achados
 corrigidos está no `git log`. Abaixo do resumo ficam **apenas os pontos em aberto**.
 
-- **Testes:** 698 (unitários + integração), cobertura ≈ 98% nos quatro pacotes.
+- **Testes:** 704 (unitários + integração), cobertura ≈ 98% nos quatro pacotes.
 - **Fase 1:** requisitos funcionais implementados e testados. Pendente só o que é externo ao código
   (vídeo, Event Storming, relatório de vulnerabilidades, PDF de entrega).
 - **Fase 2, código (seções 1 e 2 do plano):** concluído.
@@ -23,6 +23,7 @@ corrigidos está no `git log`. Abaixo do resumo ficam **apenas os pontos em aber
 | Portas e adaptadores | Hash de senha, geração e validação de JWT atrás de portas | `application/ports/`, `adapters/auth/` |
 | Atomicidade | OS + baixa de estoque numa única transação (abertura de OS, adicionar e remover insumo) | `application/ports/unit_of_work.py`, `adapters/database/transaction.py` |
 | Orçamento imutável em aprovação | Itens não mudam em `Aguardando aprovação`, `Finalizada` nem `Entregue` | `OrdemServico._validar_edicao_de_itens` |
+| Chave JWT | Lida de `JWT_SECRET_KEY`/`JWT_ALGORITHM`/`JWT_EXPIRE_MINUTES` (também do `.env`), obrigatória e sem valor padrão no código; o compose traz valores públicos de desenvolvimento, documentados no README | `adapters/config/config.py`, `docker-compose.yml` |
 | Schemas das rotas | Requests/responses de OS e insumos em `presentation/api/schemas/`, conversores de OS em `presentation/api/mappers/`; `openapi.json` idêntico ao anterior | `presentation/api/` |
 | Scripts e seeders | `create_schema.py` e `seed.py` removidos da raiz (`python -m adapters.database.seeders.executar`, que cria as tabelas antes de popular); sessão segura, catálogo de marcas único, seeders testados e na cobertura; dados de exemplo (usuário com senha conhecida) só com `SEED_DADOS_EXEMPLO=true`, definido no `docker-compose.yml`; IDs de status derivados do enum | `adapters/database/seeders/` |
 | Configuração da aplicação | `echo` do SQL controlado por `SQL_ECHO` (desligado por padrão); tabelas criadas na subida (`lifespan`), não ao importar o `main.py` | `adapters/database/database.py`, `main.py` |
@@ -31,24 +32,6 @@ corrigidos está no `git log`. Abaixo do resumo ficam **apenas os pontos em aber
 ---
 
 ## 1. Segurança
-
-### 🔴 Chave JWT: variável de ambiente inoperante
-`.env.example` e `docker-compose.yml` definem `JWT_SECRET_KEY`, `JWT_ALGORITHM` e
-`JWT_EXPIRE_MINUTES`, mas `Settings` lê `SECRET_KEY`, `ALGORITHM` e `ACCESS_TOKEN_EXPIRE_MINUTES`,
-sem `env_prefix` nem alias. Configurar `JWT_SECRET_KEY` não tem efeito: a aplicação sempre assina
-os tokens com o segredo versionado em `adapters/config/config.py`, e quem tem o código forja um
-token administrativo válido.
-
-**Impacto na Fase 2:** o `Secret` do Kubernetes e o pipeline dependem de a aplicação ler a variável.
-Corrigir antes de escrever os manifestos. O README já afirma que a chave é obrigatória e sem valor
-padrão ("a aplicação não sobe sem ela"), o que o código não faz hoje; o `docker-compose.yml` também
-traz um valor padrão para ela.
-
-**Correção:** `env_prefix="JWT_"`, `SECRET_KEY` obrigatório (a aplicação falha ao subir se faltar),
-`EXPIRE_MINUTES` no lugar de `ACCESS_TOKEN_EXPIRE_MINUTES` e remover o segredo padrão do
-`docker-compose.yml`.
-
-- `adapters/config/config.py`, `adapters/config/security.py`, `.env.example`, `docker-compose.yml`
 
 ### 🟡 Cadastro de usuários aberto
 `POST /users/register` é público e qualquer usuário cadastrado recebe, no login, um JWT que vale
@@ -119,7 +102,7 @@ CI/CD. Ajustes no que já existe, antes disso:
   `docs/` nem `.git`. O `pip install -e .` roda sem `[build-system]`/`packages` no `pyproject.toml`
   e pode falhar na descoberta automática de pacotes: validar o build.
 - **`docker-compose.yml`:** monta `.:/app` por cima da imagem (esconde o resultado real do build)
-  e traz um segredo JWT como valor padrão.
+  e usa valores de desenvolvimento para as credenciais (intencional, documentado no README).
 - **Escalabilidade:** o vídeo precisa demonstrar a autoescala; `scripts/teste_fluxo_api.sh` pode
   servir de base para gerar múltiplas OS.
 - **README:** hoje só tem uma linha de apresentação; faltam os objetivos de cada fase. Incluir
@@ -132,11 +115,10 @@ CI/CD. Ajustes no que já existe, antes disso:
   - uma seção "APIs" no README com os endpoints por grupo, o fluxo de autenticação (cadastro,
     login e token Bearer), as rotas públicas (`/consulta`) e as de integração externa
     (`/integracoes`, header `X-API-Key`), e os links para esses arquivos e para o `/docs`;
-  - corrigir a instrução sobre `JWT_SECRET_KEY` no README, que hoje não tem efeito (ver seção 1).
 
 ---
 
 ## Ordem sugerida
 
-1. 🔴 Corrigir a configuração do JWT (pré-requisito do `Secret` do Kubernetes).
+1. 🟡 Decidir o cadastro de usuários aberto.
 2. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.

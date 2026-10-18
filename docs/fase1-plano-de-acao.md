@@ -80,8 +80,8 @@ práticas de **Qualidade de Software** e **Segurança**.
 
 - [x] Autenticação JWT nas APIs administrativas.
       Verificado: 41 das 47 operações exigem JWT; as públicas são `register`, `login`, a consulta do
-      cliente, `/health` e as de `/integracoes` (chave de API). Ressalvas na auditoria (seção 1): a
-      chave JWT lida do ambiente e o cadastro de usuários aberto.
+      cliente, `/health` e as de `/integracoes` (chave de API). Ressalva na auditoria (seção 1): o
+      cadastro de usuários aberto. A chave JWT é lida do ambiente e é obrigatória.
 - [x] Validação de dados sensíveis (CPF/CNPJ, placa de veículo).
 - [x] Testes unitários e de integração para os principais fluxos.
       Verificado: 698 testes, cobertura de 99% nos quatro pacotes.
@@ -94,12 +94,11 @@ práticas de **Qualidade de Software** e **Segurança**.
       `README.md`, seção "Banco de dados" — já cobre PostgreSQL).
 - [x] APIs RESTful documentadas via Swagger ou similar.
 - [x] `Dockerfile` para build da aplicação. (Existe; o build não foi validado nesta revisão por falta de Docker.)
-- [x] `docker-compose.yml` orquestrando o ambiente completo (API + PostgreSQL). Ver na auditoria o
-      `INTEGRACAO_API_KEY` que o compose não repassa ao container.
+- [x] `docker-compose.yml` orquestrando o ambiente completo (API + PostgreSQL). 
 - [x] Testes automatizados com cobertura mínima de 80% nos domínios críticos (99% medido).
 - [x] Configuração para execução local simples (`README.md` explicativo).
-      Atenção: o README afirma que `JWT_SECRET_KEY` é obrigatória e sem valor padrão, o que o código
-      ainda não faz (ver auditoria, seção 1).
+      O compose traz credenciais de desenvolvimento, documentadas no README (nada a configurar na
+      primeira execução).
 - [ ] Organização em repositório privado com acesso concedido ao usuário GitHub
       `soat-architecture`. (Não verificável pelo código: conferir nas configurações do GitHub.)
 
