@@ -83,25 +83,17 @@ Pontos a manter sob observação:
 - As portas ficam em dois lugares: repositórios em `domain/repositories` e serviços
   (`PasswordHasher`, `TokenGenerator`) em `application/ports`. Intencional, mas vale manter o
   critério: persistência de agregados no domínio, serviços técnicos na aplicação.
-- Os repositórios fazem `commit` por conta própria; uma unidade de trabalho (seção 4) devolveria
-  o controle da transação à camada de aplicação.
+- A unidade de trabalho (`application/ports/unit_of_work.py`, implementada em
+  `adapters/database/transaction.py`) já agrupa as escritas de OS + estoque em uma transação
+  (abertura de OS, `adicionar-insumo` e `remover-insumo`). Os demais casos de uso ainda dependem
+  de cada repositório confirmar a própria escrita; estender o `async with unit_of_work` a novos
+  fluxos que toquem mais de um agregado.
 - Pastas de código fora das camadas (`seed.py`, `create_schema.py` na raiz) ainda são pendência de
   organização (seção 5).
 
 ---
 
 ## 4. Consistência de dados
-
-### 🟡 Gravação da OS e baixa de estoque não são atômicas
-Em `adicionar-insumo` e, agora, também na abertura de OS com peças, a OS e a baixa de estoque são
-persistidas em commits separados. Uma falha entre os dois deixa estoque baixado sem vínculo (ou o
-inverso). A validação prévia cobre os erros previsíveis, não uma falha de banco no meio.
-
-**Correção:** uma unidade de trabalho (uma única transação/sessão com commit ao final) coordenando
-os repositórios envolvidos.
-
-- `application/commands/criar_ordem_servico.py`
-- `application/commands/adicionar_insumo_ordem_servico.py`
 
 ### 🟡 Alterar itens depois do envio para aprovação
 `adicionar_item` e `remover_item` só são bloqueados em `Finalizada`/`Entregue`. Com a OS em
@@ -159,6 +151,5 @@ ajuste antes disso:
 ## Ordem sugerida
 
 1. 🔴 Corrigir a configuração do JWT (pré-requisito do `Secret` do Kubernetes).
-2. 🟡 Unidade de trabalho para OS + estoque.
-3. 🟡 Refatoração restante das rotas, seeders e scripts da raiz.
-4. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.
+2. 🟡 Refatoração restante das rotas, seeders e scripts da raiz.
+3. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.

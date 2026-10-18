@@ -78,9 +78,8 @@ Verificar o que já existe em `presentation/api/routes/ordens_servico.py` e
       veículo), `servicos` e `insumos`; valida tudo antes de gravar (serviço/insumo inexistente ou
       estoque insuficiente não criam a OS nem baixam estoque) e retorna o `id`. Testes em
       `tests/integration/api/test_abertura_os_completa_api.py`.
-      Limitação conhecida: a gravação da OS e a baixa de estoque são commits separados, então uma
-      falha de banco entre os dois não é revertida — tratada como unidade de trabalho em
-      `docs/auditoria-conformidade.md` (seção 3).
+      A gravação da OS e a baixa de estoque são uma única transação (unidade de trabalho):
+      falha em qualquer etapa desfaz tudo (`tests/integration/api/test_atomicidade_api.py`).
 - [x] **Consulta de status da OS**: informa a situação atual da OS, que é um dos estados —
       `Recebida`, `Diagnóstico`, `Aguardando Aprovação`, `Execução`, `Finalizada`, `Entregue`.
       Feito (já coberto desde a Fase 1): `POST /consulta/ordens-servico` (cliente, sem login, por
