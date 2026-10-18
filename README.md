@@ -105,6 +105,17 @@ A documentação Swagger estará disponível em:
 http://localhost:8000/docs
 ```
 
+## Limitações conhecidas
+
+- **Cadastro de usuários aberto.** `POST /users/register` é público e não há perfil de
+  administrador: todo usuário cadastrado recebe, no login, um JWT que vale para todas as rotas
+  administrativas. Foi mantido assim por simplicidade (trabalho acadêmico, sem exigência de
+  controle de perfis no enunciado). Em um ambiente real seria necessário restringir o cadastro ou
+  separar perfis (administrador e cliente).
+- **Itens em execução.** Com a OS em "Em execução" ainda é possível acrescentar serviços e peças;
+  o total pode divergir do orçamento aprovado, porque não há um novo ciclo de aprovação do
+  cliente para os adicionais.
+
 ## Como visualizar os logs
 
 Para visualizar os logs de todos os serviços:
