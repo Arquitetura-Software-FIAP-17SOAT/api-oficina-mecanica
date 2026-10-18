@@ -157,7 +157,6 @@ open htmlcov/index.html
 A configuração de cobertura está em `pyproject.toml`
 (`[tool.coverage.run]` / `[tool.coverage.report]`). Ela cobre os pacotes de
 domínio, aplicação, adaptadores (`adapters`) e apresentação, e deixa de fora scripts
-de linha de comando (`main.py`, `seed.py`, `create_schema.py`,
-seeders) e as interfaces
+de linha de comando (`main.py`) e as interfaces
 abstratas de repositório (`domain/repositories/*`), que não têm lógica
 própria — a suíte mantém a cobertura acima de 80% nos domínios críticos.

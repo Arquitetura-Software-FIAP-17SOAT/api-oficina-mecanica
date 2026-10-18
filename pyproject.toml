@@ -36,12 +36,8 @@ source = [
     "presentation",
 ]
 omit = [
-    # Scripts de linha de comando / seeders, não são domínios críticos
-    # cobertos por testes automatizados (fora do escopo desta suíte).
+    # Ponto de entrada da aplicação (a composição é exercitada pelos testes de API).
     "main.py",
-    "seed.py",
-    "create_schema.py",
-    "adapters/database/seeders/*",
     # Contratos (ABCs) sem lógica própria — implementações concretas
     # é que são exercitadas pelos testes.
     "domain/repositories/*",
