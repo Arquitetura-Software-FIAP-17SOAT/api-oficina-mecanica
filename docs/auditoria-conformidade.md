@@ -8,6 +8,9 @@ corrigidos está no `git log`. Abaixo do resumo ficam **apenas os pontos em aber
 - **Fase 1:** requisitos funcionais implementados e testados. Pendente só o que é externo ao código
   (vídeo, Event Storming, relatório de vulnerabilidades, PDF de entrega).
 - **Fase 2, código (seções 1 e 2 do plano):** concluído.
+- **Revisão geral de 2026-10-18:** planos das Fases 1 e 2 conferidos contra o código; itens marcados
+  com a evidência. Fica pendente o que não se verifica pelo código (acesso do repositório a
+  `soat-architecture`, build das imagens Docker, entregáveis da seção 4 da Fase 1).
 
 > Legenda: 🔴 Crítico · 🟡 Atenção
 
@@ -37,13 +40,29 @@ os tokens com o segredo versionado em `adapters/config/config.py`, e quem tem o 
 token administrativo válido.
 
 **Impacto na Fase 2:** o `Secret` do Kubernetes e o pipeline dependem de a aplicação ler a variável.
-Corrigir antes de escrever os manifestos.
+Corrigir antes de escrever os manifestos. O README já afirma que a chave é obrigatória e sem valor
+padrão ("a aplicação não sobe sem ela"), o que o código não faz hoje; o `docker-compose.yml` também
+traz um valor padrão para ela.
 
 **Correção:** `env_prefix="JWT_"`, `SECRET_KEY` obrigatório (a aplicação falha ao subir se faltar),
 `EXPIRE_MINUTES` no lugar de `ACCESS_TOKEN_EXPIRE_MINUTES` e remover o segredo padrão do
 `docker-compose.yml`.
 
 - `adapters/config/config.py`, `adapters/config/security.py`, `.env.example`, `docker-compose.yml`
+
+### 🟡 Cadastro de usuários aberto
+`POST /users/register` é público e qualquer usuário cadastrado recebe, no login, um JWT que vale
+para todas as rotas administrativas: não há conceito de perfil/administrador. Na prática, a
+autenticação JWT existe, mas qualquer visitante pode obtê-la. Opções: exigir autenticação (ou um
+perfil de administrador) para cadastrar usuários, ou criar o primeiro usuário só por seed. O
+enunciado pede "autenticação JWT para APIs administrativas" e não detalha o cadastro; decidir e
+documentar.
+
+### 🟡 `INTEGRACAO_API_KEY` não chega ao container
+O `docker-compose.yml` não repassa `INTEGRACAO_API_KEY` à API (e não há `env_file`), então, subindo
+pelo compose, as rotas de `/integracoes` respondem sempre 503. Acrescentar a variável ao serviço
+`api`. No Swagger, a chave aparece como parâmetro de cabeçalho, sem o cadeado de segurança;
+declarar um esquema `APIKeyHeader` melhora a documentação (opcional).
 
 ### 🟡 Sem rate limiting na consulta pública
 `POST /consulta/ordens-servico` é público (número da OS + CPF/CNPJ); sem limite de tentativas a
@@ -104,7 +123,8 @@ CI/CD. Ajustes no que já existe, antes disso:
   e traz um segredo JWT como valor padrão.
 - **Escalabilidade:** o vídeo precisa demonstrar a autoescala; `scripts/teste_fluxo_api.sh` pode
   servir de base para gerar múltiplas OS.
-- **README:** arquitetura (componentes, infraestrutura, fluxo de deploy), execução local, deploy
+- **README:** hoje só tem uma linha de apresentação; faltam os objetivos de cada fase. Incluir
+  arquitetura (componentes, infraestrutura, fluxo de deploy), execução local, deploy
   em Kubernetes, Terraform, link da collection de APIs e link do vídeo.
 - **Documentação das APIs (collection):** hoje o README só cita o Swagger em
   `http://localhost:8000/docs`, que exige a aplicação rodando. Falta:
