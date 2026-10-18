@@ -4,7 +4,7 @@ Estado do repositório contra os enunciados das Fases 1 e 2 (`docs/fase1-plano-d
 `docs/fase2-plano-de-acao.md`). O que já foi resolvido aparece só em resumo; o detalhe dos achados
 corrigidos está no `git log`. Abaixo do resumo ficam **apenas os pontos em aberto**.
 
-- **Testes:** 697 (unitários + integração), cobertura ≈ 98% nos quatro pacotes.
+- **Testes:** 698 (unitários + integração), cobertura ≈ 98% nos quatro pacotes.
 - **Fase 1:** requisitos funcionais implementados e testados. Pendente só o que é externo ao código
   (vídeo, Event Storming, relatório de vulnerabilidades, PDF de entrega).
 - **Fase 2, código (seções 1 e 2 do plano):** concluído.
@@ -20,6 +20,7 @@ corrigidos está no `git log`. Abaixo do resumo ficam **apenas os pontos em aber
 | Portas e adaptadores | Hash de senha, geração e validação de JWT atrás de portas | `application/ports/`, `adapters/auth/` |
 | Atomicidade | OS + baixa de estoque numa única transação (abertura de OS, adicionar e remover insumo) | `application/ports/unit_of_work.py`, `adapters/database/transaction.py` |
 | Orçamento imutável em aprovação | Itens não mudam em `Aguardando aprovação`, `Finalizada` nem `Entregue` | `OrdemServico._validar_edicao_de_itens` |
+| Schemas das rotas | Requests/responses de OS e insumos em `presentation/api/schemas/`, conversores de OS em `presentation/api/mappers/`; `openapi.json` idêntico ao anterior | `presentation/api/` |
 | Scripts e seeders | `create_schema.py` e `seed.py` removidos da raiz (`python -m adapters.database.seeders.executar`, que cria as tabelas antes de popular); sessão segura, catálogo de marcas único, seeders testados e na cobertura; dados de exemplo (usuário com senha conhecida) só com `SEED_DADOS_EXEMPLO=true`, definido no `docker-compose.yml`; IDs de status derivados do enum | `adapters/database/seeders/` |
 | Configuração da aplicação | `echo` do SQL controlado por `SQL_ECHO` (desligado por padrão); tabelas criadas na subida (`lifespan`), não ao importar o `main.py` | `adapters/database/database.py`, `main.py` |
 | APIs da Fase 2 | Abertura completa de OS, consulta de status, aprovação e atualização de status por sistema externo (`X-API-Key`), listagem ordenada com exclusão lógica | `presentation/api/routes/` |
@@ -79,9 +80,13 @@ de agregados no domínio, serviços técnicos na aplicação.
 
 ## 3. Refatoração restante
 
-### 🟡 Rotas grandes e schemas misturados com endpoints
-Separar os schemas Pydantic (requests/responses) dos endpoints: `ordens_servico.py` (~1050 linhas)
-e `insumos.py` (~380) concentram schemas, conversores e rotas no mesmo arquivo.
+### 🟡 Schemas ainda junto das rotas nos demais recursos
+`ordens_servico.py` e `insumos.py` já têm requests/responses em `presentation/api/schemas/` e os
+conversores de OS em `presentation/api/mappers/` (regra verificada por teste). `clientes.py`,
+`servicos.py`, `veiculos.py`, `users.py`, `consulta_publica.py` e `integracoes.py` ainda mantêm os
+schemas no mesmo arquivo das rotas; são arquivos pequenos (≤ 280 linhas), então é opcional.
+`ordens_servico.py` continua com ~730 linhas de endpoints; dividi-lo em routers menores (ordens,
+status, itens/insumos, execução) só vale se isso ainda incomodar.
 
 ---
 
@@ -115,5 +120,4 @@ CI/CD. Ajustes no que já existe, antes disso:
 ## Ordem sugerida
 
 1. 🔴 Corrigir a configuração do JWT (pré-requisito do `Secret` do Kubernetes).
-2. 🟡 Refatoração restante: separar os schemas das rotas.
-3. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.
+2. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.
