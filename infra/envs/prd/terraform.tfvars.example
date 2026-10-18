@@ -1,0 +1,7 @@
+# Copie para terraform.tfvars e ajuste se necessário. Todos os valores têm default.
+regionDefault         = "us-east-1"
+roleName              = "voclabs"
+instanceTypes         = ["t3.medium"]
+nodeDesiredSize       = 1
+nodeMaxSize           = 2
+databaseInstanceClass = "db.t3.micro"

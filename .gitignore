@@ -45,3 +45,19 @@ temp/
 *.key
 *.crt
 .docs/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# kubeconfig gerado pelo kind / terraform output no ambiente dev
+infra/envs/dev/*-config
+infra/envs/dev/kubeconfig-*.yaml

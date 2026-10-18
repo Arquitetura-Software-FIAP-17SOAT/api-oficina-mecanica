@@ -120,6 +120,24 @@ docker compose down -v
 
 > Atenção: o comando acima remove os dados armazenados no banco PostgreSQL local.
 
+## Provisionamento da infraestrutura com Terraform
+
+Os scripts em [`infra/`](infra/README.md) provisionam o cluster Kubernetes e o banco de dados em
+dois ambientes, selecionados pelo `APP_ENV`:
+
+- `dev`: cluster local com kind e PostgreSQL no próprio cluster;
+- `prd`: Amazon EKS e Amazon RDS PostgreSQL na AWS Academy.
+
+```bash
+cd infra/envs/$APP_ENV
+terraform init        # no prd: terraform init -backend-config="bucket=<bucket-do-state>"
+terraform plan
+terraform apply
+```
+
+Recursos criados, pré-requisitos, outputs e o contrato com os manifests em `/k8s` estão
+documentados em [`infra/README.md`](infra/README.md).
+
 ## Como executar os testes
 
 ```bash
