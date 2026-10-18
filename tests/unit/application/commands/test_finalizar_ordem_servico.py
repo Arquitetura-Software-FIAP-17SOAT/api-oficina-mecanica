@@ -14,8 +14,8 @@ def _ordem_em_execucao() -> OrdemServico:
     ordem = OrdemServico(veiculo_id="1", descricao="Revisão completa")
     ordem.id = 1
     ordem.iniciar_diagnostico()
-    ordem.enviar_para_aprovacao(orcamento=250.0)
     ordem.adicionar_item("10", 250.0)
+    ordem.enviar_para_aprovacao(orcamento=250.0)
     ordem.aprovar_e_iniciar_execucao()
     return ordem
 

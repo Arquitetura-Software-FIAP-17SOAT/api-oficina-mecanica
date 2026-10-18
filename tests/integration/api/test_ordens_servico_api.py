@@ -1,5 +1,6 @@
 from tests.integration.conftest import (
     criar_cliente,
+    criar_insumo,
     criar_marca,
     criar_servico,
     criar_usuario,
@@ -46,13 +47,6 @@ def test_fluxo_completo_da_ordem_de_servico(client, db_session, auth_headers):
     assert resposta_diagnostico.status_code == 200
     assert resposta_diagnostico.json()["status"] == "Em diagnóstico"
 
-    resposta_aprovacao = client.post(
-        f"/ordens-servico/{ordem_id}/enviar-aprovacao",
-        json={"orcamento": 200.0, "observacoes": "Aguardando cliente"},
-    )
-    assert resposta_aprovacao.status_code == 200
-    assert resposta_aprovacao.json()["status"] == "Aguardando aprovação"
-
     resposta_item = client.post(
         f"/ordens-servico/{ordem_id}/adicionar-item",
         json={"servico_id": str(servico.id), "quantidade": 1},
@@ -79,6 +73,13 @@ def test_fluxo_completo_da_ordem_de_servico(client, db_session, auth_headers):
     assert item["nome"] == "Troca de óleo"
     assert item["quantidade"] == 2
     assert item["valor_total"] == item["valor_unitario"] * 2
+
+    resposta_aprovacao = client.post(
+        f"/ordens-servico/{ordem_id}/enviar-aprovacao",
+        json={"orcamento": 200.0, "observacoes": "Aguardando cliente"},
+    )
+    assert resposta_aprovacao.status_code == 200
+    assert resposta_aprovacao.json()["status"] == "Aguardando aprovação"
 
     resposta_aprovar = client.post(f"/ordens-servico/{ordem_id}/aprovar-executar")
     assert resposta_aprovar.status_code == 200
@@ -446,3 +447,72 @@ def test_enviar_aprovacao_sem_itens_retorna_400(client, db_session):
 
     assert resposta.status_code == 400
     assert "não possui serviços adicionados" in resposta.json()["detail"]
+
+
+def _ordem_aguardando_aprovacao(client, db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+    servico = criar_servico(db_session)
+    ordem_id = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+    ).json()["id"]
+    client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
+    client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(servico.id), "quantidade": 1},
+    )
+    client.post(f"/ordens-servico/{ordem_id}/enviar-aprovacao", json={})
+    return ordem_id, servico
+
+
+def test_nao_altera_servicos_com_o_orcamento_aguardando_aprovacao(client, db_session):
+    ordem_id, servico = _ordem_aguardando_aprovacao(client, db_session)
+    outro = criar_servico(db_session, nome="Alinhamento")
+    orcamento = client.get(f"/ordens-servico/{ordem_id}").json()["orcamento"]
+
+    adicionar = client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(outro.id), "quantidade": 1},
+    )
+    remover = client.post(
+        f"/ordens-servico/{ordem_id}/remover-item",
+        json={"servico_id": str(servico.id)},
+    )
+
+    assert adicionar.status_code == 400
+    assert "aguardando aprovação" in adicionar.json()["detail"]
+    assert remover.status_code == 400
+    detalhe = client.get(f"/ordens-servico/{ordem_id}").json()
+    assert len(detalhe["itens"]) == 1
+    assert detalhe["orcamento"] == orcamento
+
+
+def test_nao_adiciona_insumo_com_o_orcamento_aguardando_e_nao_baixa_estoque(
+    client, db_session
+):
+    ordem_id, _ = _ordem_aguardando_aprovacao(client, db_session)
+    insumo = criar_insumo(db_session, estoque=10)
+
+    resposta = client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-insumo",
+        json={"insumo_id": insumo.id, "quantidade": 3},
+    )
+
+    assert resposta.status_code == 400
+    assert client.get(f"/insumos/{insumo.id}").json()["estoque"] == 10
+
+
+def test_voltando_ao_diagnostico_os_itens_podem_ser_alterados_de_novo(
+    client, db_session
+):
+    ordem_id, _ = _ordem_aguardando_aprovacao(client, db_session)
+    outro = criar_servico(db_session, nome="Alinhamento")
+
+    client.post(f"/ordens-servico/{ordem_id}/retornar-diagnostico", json={})
+    resposta = client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(outro.id), "quantidade": 1},
+    )
+
+    assert resposta.status_code == 200

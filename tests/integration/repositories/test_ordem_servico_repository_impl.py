@@ -54,8 +54,8 @@ async def test_save_persiste_itens_e_atualiza_status(db_session):
     ordem = await repository.save(ordem)
 
     ordem.iniciar_diagnostico()
-    ordem.enviar_para_aprovacao(orcamento=200.0)
     ordem.adicionar_item(str(servico.id), 200.0)
+    ordem.enviar_para_aprovacao(orcamento=200.0)
     await repository.save(ordem)
 
     encontrada = await repository.find_by_id(ordem.id)

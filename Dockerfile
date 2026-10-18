@@ -14,4 +14,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python create_schema.py && python seed.py && uvicorn main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python -m adapters.database.seeders.executar && uvicorn main:app --host 0.0.0.0 --port 8000"]

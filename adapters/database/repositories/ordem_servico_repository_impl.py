@@ -20,14 +20,12 @@ from adapters.database.models import (
 class OrdemServicoRepositoryImpl(OrdemServicoRepository):
     """Implementação do repositório de Ordem de Serviço usando SQLAlchemy"""
     
-    # Mapeamento de status para IDs (conforme seeder)
+    # Mapeamento de status para IDs. O seeder grava os status na ordem do enum
+    # StatusOrdemServico, então o ID de cada um é a posição dele (a partir de 1).
+    # Ambos derivam do enum para não divergirem; a ordem do enum não deve mudar.
     STATUS_TO_ID = {
-        "Recebida": 1,
-        "Em diagnóstico": 2,
-        "Aguardando aprovação": 3,
-        "Em execução": 4,
-        "Finalizada": 5,
-        "Entregue": 6,
+        status.value: posicao
+        for posicao, status in enumerate(StatusOrdemServico, start=1)
     }
 
     def __init__(self, db: Session):

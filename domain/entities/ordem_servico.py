@@ -332,15 +332,25 @@ class OrdemServico:
         return valor
 
     def _validar_edicao_de_itens(self):
-        """Bloqueia alterar serviços/insumos depois que a OS foi finalizada.
+        """Bloqueia alterar serviços/insumos quando o orçamento não pode mais mudar.
 
-        Uma OS 'Finalizada' ou 'Entregue' já teve seu orçamento aprovado e
-        (na segunda) o veículo já voltou para o cliente — adicionar ou
-        remover um serviço/insumo nesse ponto não corresponde a nenhum fluxo
-        operacional real e deixaria ``orcamento`` (o que foi aprovado) e
-        ``orcamento_calculado`` (o que está registrado agora) divergentes
-        sem motivo.
+        - 'Aguardando aprovação': o orçamento já está com o cliente. Mudar os
+          itens agora faria ``orcamento`` (o que o cliente vê) divergir de
+          ``orcamento_calculado`` (o que a OS contém), e ele poderia aprovar
+          um valor diferente do que será executado. Para alterar, a OS volta
+          antes ao diagnóstico e um novo orçamento é enviado.
+        - 'Finalizada' e 'Entregue': o orçamento já foi aprovado e (na
+          segunda) o veículo já voltou para o cliente — adicionar ou remover
+          um serviço/insumo nesse ponto não corresponde a nenhum fluxo
+          operacional real.
         """
+        if self.status == StatusOrdemServico.AGUARDANDO_APROVACAO:
+            raise ValueError(
+                "Não é possível alterar os serviços/insumos de uma ordem de "
+                "serviço aguardando aprovação: o orçamento já foi enviado ao "
+                "cliente. Retorne a ordem para diagnóstico para alterá-la"
+            )
+
         if self.status in (
             StatusOrdemServico.FINALIZADA,
             StatusOrdemServico.ENTREGUE,
