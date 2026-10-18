@@ -111,6 +111,14 @@ CI/CD. Ajustes no que já existe, antes disso:
   servir de base para gerar múltiplas OS.
 - **README:** arquitetura (componentes, infraestrutura, fluxo de deploy), execução local, deploy
   em Kubernetes, Terraform, link da collection de APIs e link do vídeo.
+- **Documentação das APIs (collection):** hoje o README só cita o Swagger em
+  `http://localhost:8000/docs`, que exige a aplicação rodando. Falta:
+  - exportar o `openapi.json` (por script, a partir do próprio app) para `docs/`;
+  - gerar a collection do Postman a partir dele;
+  - uma seção "APIs" no README com os endpoints por grupo, o fluxo de autenticação (cadastro,
+    login e token Bearer), as rotas públicas (`/consulta`) e as de integração externa
+    (`/integracoes`, header `X-API-Key`), e os links para esses arquivos e para o `/docs`;
+  - corrigir a instrução sobre `JWT_SECRET_KEY` no README, que hoje não tem efeito (ver seção 1).
 
 ---
 
