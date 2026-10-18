@@ -89,8 +89,14 @@ Verificar o que já existe em `presentation/api/routes/ordens_servico.py` e
       `test_consulta_acompanha_os_por_todos_os_status`.
       Ponto de atenção: a API usa `Em diagnóstico` e `Em execução`; o enunciado da Fase 2 escreve
       `Diagnóstico` e `Execução`. São os mesmos estados, só muda a grafia — sem ação necessária.
-- [ ] **Aprovação de orçamento**: endpoint para receber notificações externas de aprovação ou
+- [x] **Aprovação de orçamento**: endpoint para receber notificações externas de aprovação ou
       recusa do orçamento do cliente.
+      Feito: `POST /integracoes/ordens-servico/{id}/orcamento` com `{"decisao": "aprovado" |
+      "recusado"}`, autenticado por chave de API no header `X-API-Key` (variável
+      `INTEGRACAO_API_KEY`; sem ela a integração responde 503). Aprovado leva a OS a
+      `Em execução`; recusado, a `Finalizada`. Reaproveita os use cases de aprovar/rejeitar.
+      No Kubernetes, a chave entra como `Secret`. Testes em
+      `tests/integration/api/test_integracoes_api.py`.
 - [ ] **Listagem de ordens de serviço**:
   - [ ] Ordenar por status: `Execução > Aguardando Aprovação > Diagnóstico > Recebida`.
   - [ ] Dentro do mesmo status, mais antigas primeiro.

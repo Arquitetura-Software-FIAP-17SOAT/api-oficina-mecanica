@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from infrastructure.database.database import get_db
 from presentation.api.routes.clientes import router as clientes_router
 from presentation.api.routes.consulta_publica import router as consulta_publica_router
+from presentation.api.routes.integracoes import router as integracoes_router
 from presentation.api.routes.insumos import router as insumos_router
 from presentation.api.routes.ordens_servico import router as ordens_servico_router
 from presentation.api.routes.servicos import router as servicos_router
@@ -33,6 +34,7 @@ def _montar_app(db_session) -> FastAPI:
     app.include_router(veiculos_router)
     app.include_router(ordens_servico_router)
     app.include_router(consulta_publica_router)
+    app.include_router(integracoes_router)
 
     app.dependency_overrides[get_db] = lambda: db_session
 

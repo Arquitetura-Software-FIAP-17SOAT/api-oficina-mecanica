@@ -62,16 +62,11 @@ essas OS. Definir se continua permitido para consulta administrativa ou se passa
 - `infrastructure/database/repositories/ordem_servico_repository_impl.py` (`list_paginado`)
 - `application/queries/list_ordens_servico.py`
 
-### 🟠 Aprovação de orçamento por notificação externa
-`POST /ordens-servico/{id}/aprovar-executar` e `/rejeitar-orcamento` existem, mas ficam atrás do
-JWT administrativo (`dependencies=[Depends(get_current_user)]` no router). Um serviço externo
-precisa de credencial própria (token de serviço/API key vinda de `Secret`) ou de um endpoint
-dedicado. Também falta decidir o contrato da notificação (aprovada/recusada, identificação da OS).
-
 ### 🟠 Atualização de status por ferramenta externa (e-mail)
 Não existe nenhum mecanismo de entrada por e-mail ou equivalente. Precisa de decisão de desenho
-(webhook de um provedor, endpoint que recebe o e-mail já parseado, ou fila) e de endpoint com
-autenticação própria. Reutilizar os use cases de transição existentes.
+(webhook de um provedor, endpoint que recebe o e-mail já parseado, ou fila). Reutilizar o router
+`/integracoes` (autenticação por `X-API-Key`, já criada para a aprovação de orçamento) e os use
+cases de transição existentes.
 
 ### 🟡 Nomenclatura dos status (ponto de atenção)
 O enunciado da Fase 2 escreve `Diagnóstico` e `Execução`; a API devolve `Em diagnóstico` e
@@ -150,7 +145,7 @@ ajuste antes disso:
 
 1. 🔴 Corrigir a configuração do JWT (pré-requisito do `Secret` do Kubernetes).
 2. 🟠 Listagem de OS (ordenação + exclusão lógica), com testes.
-3. 🟠 Autenticação de serviço para aprovação externa e entrada de status por e-mail.
+3. 🟠 Entrada de status por e-mail (a aprovação externa já existe em `/integracoes`).
 4. 🟡 Unidade de trabalho para OS + estoque.
 5. 🟡 Refatoração restante das rotas, seeders e scripts da raiz.
 6. Dockerfile → `/k8s` → `/infra` → CI/CD → README e vídeo.
