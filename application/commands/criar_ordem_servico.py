@@ -5,6 +5,7 @@ from application.commands.adicionar_insumo_ordem_servico import (
 from application.commands.adicionar_item_ordem_servico import (
     ServicoNaoEncontradoError,
 )
+from application.ports.unit_of_work import UnitOfWork
 from domain.entities.ordem_servico import OrdemServico
 from domain.repositories.insumo_repository import InsumoRepository
 from domain.repositories.ordem_servico_repository import OrdemServicoRepository
@@ -48,7 +49,8 @@ class CriarOrdemServicoUseCase:
 
     Recebe veículo (de onde vem o cliente), serviços e peças. Tudo é validado
     antes de persistir: se qualquer item falhar, nada é gravado nem baixado
-    do estoque.
+    do estoque. A gravação da OS e a baixa de estoque formam uma única
+    transação.
     """
 
     def __init__(
@@ -57,11 +59,13 @@ class CriarOrdemServicoUseCase:
         veiculo_repository: VeiculoRepository,
         servico_repository: ServicoRepository,
         insumo_repository: InsumoRepository,
+        unit_of_work: UnitOfWork,
     ):
         self.ordem_servico_repository = ordem_servico_repository
         self.veiculo_repository = veiculo_repository
         self.servico_repository = servico_repository
         self.insumo_repository = insumo_repository
+        self.unit_of_work = unit_of_work
 
     async def execute(self, command: CriarOrdemServicoCommand) -> OrdemServico:
         """Executa a criação da ordem de serviço"""
@@ -111,10 +115,12 @@ class CriarOrdemServicoUseCase:
             insumo.remover_estoque(solicitado.quantidade)
             insumos_baixados.append(insumo)
 
-        # Persiste só depois de validar tudo
-        await self.ordem_servico_repository.save(ordem_servico)
+        # Persiste só depois de validar tudo, numa única transação: a OS e a
+        # baixa de estoque são confirmadas juntas ou nenhuma delas.
+        async with self.unit_of_work:
+            await self.ordem_servico_repository.save(ordem_servico)
 
-        for insumo in insumos_baixados:
-            await self.insumo_repository.update(insumo)
+            for insumo in insumos_baixados:
+                await self.insumo_repository.update(insumo)
 
         return ordem_servico

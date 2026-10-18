@@ -2,6 +2,7 @@ from collections.abc import Sequence
 
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, case
+from adapters.database.transaction import persistir
 from domain.entities.ordem_servico import OrdemServico
 from domain.repositories.ordem_servico_repository import OrdemServicoRepository
 from domain.value_objects.status_ordem_servico import StatusOrdemServico
@@ -118,7 +119,7 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
                 )
                 self.db.add(insumo_model)
 
-        self.db.commit()
+        persistir(self.db)
         self.db.refresh(model)
 
         # Atualiza o ID na entidade após ser inserido no banco
@@ -220,7 +221,7 @@ class OrdemServicoRepositoryImpl(OrdemServicoRepository):
             return False
 
         self.db.delete(model)
-        self.db.commit()
+        persistir(self.db)
         return True
 
     def _model_to_entity(self, model: OrdemServicoModel) -> OrdemServico:

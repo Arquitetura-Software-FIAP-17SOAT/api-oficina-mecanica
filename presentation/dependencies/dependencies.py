@@ -53,6 +53,7 @@ from application.queries.list_tempo_medio_execucao import (
 from adapters.auth.jwt_token_generator import JWTTokenGenerator
 from adapters.auth.password_hasher import BCryptPasswordHasher
 from adapters.database.database import get_db
+from adapters.database.transaction import SqlAlchemyUnitOfWork
 from adapters.database.repositories.cliente_repository_impl import (
     ClienteRepositoryImpl,
 )
@@ -117,6 +118,7 @@ def get_criar_ordem_servico_use_case(
         veiculo_repository=VeiculoRepositoryImpl(db),
         servico_repository=ServicoRepositoryImpl(db),
         insumo_repository=InsumoRepositoryImpl(db),
+        unit_of_work=SqlAlchemyUnitOfWork(db),
     )
 
 
@@ -149,6 +151,7 @@ def get_adicionar_insumo_ordem_servico_use_case(
     return AdicionarInsumoOrdemServicoUseCase(
         ordem_servico_repository=OrdemServicoRepositoryImpl(db),
         insumo_repository=InsumoRepositoryImpl(db),
+        unit_of_work=SqlAlchemyUnitOfWork(db),
     )
 
 
@@ -160,6 +163,7 @@ def get_remover_insumo_ordem_servico_use_case(
     return RemoverInsumoOrdemServicoUseCase(
         ordem_servico_repository=OrdemServicoRepositoryImpl(db),
         insumo_repository=InsumoRepositoryImpl(db),
+        unit_of_work=SqlAlchemyUnitOfWork(db),
     )
 
 

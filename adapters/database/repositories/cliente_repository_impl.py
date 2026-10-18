@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from adapters.database.transaction import persistir
 from domain.entities.cliente import Cliente
 from domain.repositories.cliente_repository import ClienteRepository
 from adapters.database.models import ClienteModel, VeiculoModel
@@ -32,7 +33,7 @@ class ClienteRepositoryImpl(ClienteRepository):
         )
 
         self.db.add(model)
-        self.db.commit()
+        persistir(self.db)
         self.db.refresh(model)
 
         cliente.id = model.id
@@ -63,7 +64,7 @@ class ClienteRepositoryImpl(ClienteRepository):
         model.cpf_cnpj = str(cliente.cpf_cnpj) if cliente.cpf_cnpj else None
         model.email = str(cliente.email) if cliente.email else None
 
-        self.db.commit()
+        persistir(self.db)
 
         return cliente
 
@@ -74,7 +75,7 @@ class ClienteRepositoryImpl(ClienteRepository):
             return
 
         self.db.delete(model)
-        self.db.commit()
+        persistir(self.db)
 
     async def exists_by_cpf_cnpj(self, cpf_cnpj: str) -> bool:
         return (

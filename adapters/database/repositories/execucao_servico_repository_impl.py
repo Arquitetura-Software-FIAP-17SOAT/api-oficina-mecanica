@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from adapters.database.transaction import persistir
 from domain.entities.execucao_servico import ExecucaoServico
 from domain.repositories.execucao_servico_repository import ExecucaoServicoRepository
 from adapters.database.models import OrdemServicoModel, OrdemServicoServicoModel
@@ -39,4 +40,4 @@ class ExecucaoServicoRepositoryImpl(ExecucaoServicoRepository):
         model = self._find_model(execucao.ordem_servico_id, execucao.servico_id)
         model.data_inicio = execucao.data_inicio
         model.data_fim = execucao.data_fim
-        self.db.commit()
+        persistir(self.db)
