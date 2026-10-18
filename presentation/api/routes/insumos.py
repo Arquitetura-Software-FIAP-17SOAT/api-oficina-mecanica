@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, Path, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from domain.value_objects.dinheiro import Dinheiro
@@ -31,6 +31,11 @@ from application.queries.get_insumo import GetInsumoUseCase
 from application.queries.list_insumos import ListInsumosUseCase
 from application.queries.list_insumos_estoque_baixo import (
     ListInsumosEstoqueBaixoUseCase,
+)
+from presentation.api.error_handling import (
+    encontrado_ou_404,
+    exclusao_ou_404,
+    traduzir_value_error,
 )
 from presentation.dependencies.auth_dependencies import get_current_user
 from presentation.dependencies.insumo_dependencies import (
@@ -188,7 +193,7 @@ async def create_insumo(
     request: CreateInsumoRequest,
     use_case: CreateInsumoUseCase = Depends(get_create_insumo_use_case),
 ):
-    try:
+    with traduzir_value_error():
         command = CreateInsumoCommand(
             nome=request.nome,
             descricao=request.descricao,
@@ -198,12 +203,6 @@ async def create_insumo(
         )
 
         return await use_case.execute(command)
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
 
 
 @router.get(
@@ -249,13 +248,7 @@ async def get_insumo(
 ):
     insumo = await use_case.execute(insumo_id)
 
-    if insumo is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=INSUMO_NAO_ENCONTRADO,
-        )
-
-    return insumo
+    return encontrado_ou_404(insumo, INSUMO_NAO_ENCONTRADO)
 
 
 @router.put(
@@ -272,7 +265,7 @@ async def update_insumo(
     request: UpdateInsumoRequest,
     use_case: UpdateInsumoUseCase = Depends(get_update_insumo_use_case),
 ):
-    try:
+    with traduzir_value_error():
         command = UpdateInsumoCommand(
             insumo_id=insumo_id,
             nome=request.nome,
@@ -283,19 +276,7 @@ async def update_insumo(
 
         insumo = await use_case.execute(command)
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    if insumo is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=INSUMO_NAO_ENCONTRADO,
-        )
-
-    return insumo
+    return encontrado_ou_404(insumo, INSUMO_NAO_ENCONTRADO)
 
 
 @router.delete(
@@ -310,20 +291,10 @@ async def delete_insumo(
     ],
     use_case: DeleteInsumoUseCase = Depends(get_delete_insumo_use_case),
 ):
-    try:
+    with traduzir_value_error():
         excluido = await use_case.execute(DeleteInsumoCommand(insumo_id=insumo_id))
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    if not excluido:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=INSUMO_NAO_ENCONTRADO,
-        )
+    exclusao_ou_404(excluido, INSUMO_NAO_ENCONTRADO)
 
 
 @router.post(
@@ -340,7 +311,7 @@ async def registrar_entrada_estoque(
     request: MovimentacaoEstoqueRequest,
     use_case: AddEstoqueUseCase = Depends(get_add_estoque_use_case),
 ):
-    try:
+    with traduzir_value_error():
         command = AddEstoqueCommand(
             insumo_id=insumo_id,
             quantidade=request.quantidade,
@@ -348,19 +319,7 @@ async def registrar_entrada_estoque(
 
         insumo = await use_case.execute(command)
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    if insumo is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=INSUMO_NAO_ENCONTRADO,
-        )
-
-    return insumo
+    return encontrado_ou_404(insumo, INSUMO_NAO_ENCONTRADO)
 
 
 @router.post(
@@ -377,7 +336,7 @@ async def registrar_saida_estoque(
     request: MovimentacaoEstoqueRequest,
     use_case: RemoveEstoqueUseCase = Depends(get_remove_estoque_use_case),
 ):
-    try:
+    with traduzir_value_error():
         command = RemoveEstoqueCommand(
             insumo_id=insumo_id,
             quantidade=request.quantidade,
@@ -385,19 +344,7 @@ async def registrar_saida_estoque(
 
         insumo = await use_case.execute(command)
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    if insumo is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=INSUMO_NAO_ENCONTRADO,
-        )
-
-    return insumo
+    return encontrado_ou_404(insumo, INSUMO_NAO_ENCONTRADO)
 
 
 @router.post(
@@ -414,7 +361,7 @@ async def ajustar_estoque(
     request: AjusteEstoqueRequest,
     use_case: AdjustEstoqueUseCase = Depends(get_adjust_estoque_use_case),
 ):
-    try:
+    with traduzir_value_error():
         command = AdjustEstoqueCommand(
             insumo_id=insumo_id,
             quantidade=request.quantidade,
@@ -422,16 +369,4 @@ async def ajustar_estoque(
 
         insumo = await use_case.execute(command)
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    if insumo is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=INSUMO_NAO_ENCONTRADO,
-        )
-
-    return insumo
+    return encontrado_ou_404(insumo, INSUMO_NAO_ENCONTRADO)

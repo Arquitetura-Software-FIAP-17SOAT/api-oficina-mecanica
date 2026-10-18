@@ -105,12 +105,12 @@ com `orcamento_calculado`. Definir se alterar itens após o envio devolve a OS p
 
 ## 5. Refatoração restante (seção 1 da Fase 2)
 
-### 🟡 Rotas com o mesmo `try/except` repetido
-`ordens_servico.py` já usa `traduzir_erros` / `ordem_servico_ou_404`
-(`presentation/api/error_handling.py`). Aplicar o mesmo padrão e extrair os schemas Pydantic de
-`insumos.py` (437 linhas), `veiculos.py`, `clientes.py` e `servicos.py`. `ordens_servico.py` ainda
-tem ~1050 linhas por concentrar schemas, conversores e endpoints; separar os schemas em módulo
-próprio.
+### 🟡 Rotas grandes e schemas misturados com endpoints
+O `try/except` e as checagens de 404 repetidos já foram removidos de todas as rotas, com os
+helpers de `presentation/api/error_handling.py` (`traduzir_erros`, `traduzir_value_error`,
+`encontrado_ou_404`, `exclusao_ou_404`, `ordem_servico_ou_404`). Resta separar os schemas Pydantic
+(requests/responses) dos endpoints: `ordens_servico.py` tem ~1050 linhas e `insumos.py` ~380 por
+concentrarem schemas, conversores e rotas no mesmo arquivo.
 
 ### 🟡 Scripts e seeders na raiz
 - `seed.py` e `create_schema.py` ficam soltos na raiz; mover o seed para dentro de

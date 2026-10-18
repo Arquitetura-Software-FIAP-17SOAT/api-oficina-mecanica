@@ -33,10 +33,35 @@ def traduzir_erros(
         )
 
 
+@contextmanager
+def traduzir_value_error(
+    status_code: int = status.HTTP_400_BAD_REQUEST,
+) -> Iterator[None]:
+    """Traduz ``ValueError`` (regra de negócio violada) em resposta HTTP.
+
+    Versão enxuta de ``traduzir_erros``, para as rotas que deixam qualquer
+    outra exceção seguir para o tratador padrão do FastAPI.
+    """
+    try:
+        yield
+    except ValueError as e:
+        raise HTTPException(status_code=status_code, detail=str(e))
+
+
+def encontrado_ou_404(recurso: Optional[T], mensagem: str) -> T:
+    """Devolve o recurso ou responde 404 quando ele não existe (``None``)."""
+    if recurso is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=mensagem)
+    return recurso
+
+
+def exclusao_ou_404(excluido: bool, mensagem: str) -> None:
+    """Responde 404 quando a exclusão não encontrou o registro."""
+    if not excluido:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=mensagem)
+
+
 def ordem_servico_ou_404(ordem_servico: Optional[T], ordem_id: int) -> T:
-    if ordem_servico is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Ordem de serviço {ordem_id} não encontrada",
-        )
-    return ordem_servico
+    return encontrado_ou_404(
+        ordem_servico, f"Ordem de serviço {ordem_id} não encontrada"
+    )

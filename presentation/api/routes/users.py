@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, EmailStr
 
 from application.commands.register_user import (
@@ -9,6 +9,7 @@ from application.commands.login_user import (
     LoginUserCommand,
     LoginUserUseCase,
 )
+from presentation.api.error_handling import traduzir_value_error
 from presentation.dependencies.dependencies import (
     get_register_user_use_case,
     get_login_user_use_case,
@@ -50,7 +51,7 @@ async def register_user(
     request: RegisterUserRequest,
     use_case: RegisterUserUseCase = Depends(get_register_user_use_case),
 ):
-    try:
+    with traduzir_value_error():
         command = RegisterUserCommand(
             name=request.name,
             email=request.email,
@@ -64,12 +65,6 @@ async def register_user(
             message="Usuário cadastrado com sucesso.",
         )
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
 
 @router.post(
     "/login",
@@ -80,7 +75,7 @@ async def login(
     request: LoginRequest,
     use_case: LoginUserUseCase = Depends(get_login_user_use_case),
 ):
-    try:
+    with traduzir_value_error(status.HTTP_401_UNAUTHORIZED):
         command = LoginUserCommand(
             email=request.email,
             password=request.password,
@@ -90,10 +85,4 @@ async def login(
 
         return LoginResponse(
             access_token=token,
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
         )
