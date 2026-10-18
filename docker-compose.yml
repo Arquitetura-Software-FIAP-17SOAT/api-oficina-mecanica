@@ -31,6 +31,8 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-42b38697d6c921058ddcfdd5ed5d89faf0c671e3}
       JWT_ALGORITHM: HS256
       JWT_EXPIRE_MINUTES: 60
+      # Chave dos sistemas externos de /integracoes; vazia mantém a integração desligada (503)
+      INTEGRACAO_API_KEY: ${INTEGRACAO_API_KEY:-}
       SEED_DADOS_EXEMPLO: "true"
     volumes:
       - .:/app

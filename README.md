@@ -66,7 +66,8 @@ O Docker Compose será responsável por subir:
 
 A variável `DATABASE_URL` é configurada automaticamente pelo `docker-compose.yml`.
 As variáveis de autenticação (`JWT_SECRET_KEY`, `JWT_ALGORITHM`,
-`JWT_EXPIRE_MINUTES`) são lidas do `.env` — ver `.env.example`.
+`JWT_EXPIRE_MINUTES`) e a chave dos sistemas externos (`INTEGRACAO_API_KEY`, usada nas rotas
+`/integracoes`; sem ela essas rotas respondem 503) são lidas do `.env` — ver `.env.example`.
 
 ## Como construir
 
