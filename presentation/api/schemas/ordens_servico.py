@@ -19,14 +19,11 @@ class InsumoSolicitadoRequest(BaseModel):
 
 class CriarOrdemServicoRequest(BaseModel):
     """Request para criar uma nova ordem de serviço"""
-    veiculo_id: str = Field(..., description="ID do veículo")
-    cliente_id: Optional[int] = Field(
-        None,
-        description=(
-            "ID do cliente. Opcional: o cliente é o dono do veículo; se informado, "
-            "precisa ser o dono do veículo."
-        ),
+    cliente_id: int = Field(
+        ...,
+        description="ID do cliente. Precisa ser o dono do veículo informado.",
     )
+    veiculo_id: str = Field(..., description="ID do veículo")
     servicos: list[ServicoSolicitadoRequest] = Field(
         default_factory=list, description="Serviços a executar"
     )

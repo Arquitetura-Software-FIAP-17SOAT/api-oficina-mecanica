@@ -10,10 +10,14 @@ from tests.integration.conftest import (
 )
 
 
-def _abrir(client, veiculo_id, descricao):
+def _abrir(client, veiculo, descricao):
     return client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo_id), "descricao": descricao},
+        json={
+            "veiculo_id": str(veiculo.id),
+            "cliente_id": veiculo.cliente_id,
+            "descricao": descricao,
+        },
     ).json()["id"]
 
 
@@ -55,7 +59,7 @@ def _cenario(client, db_session):
         ("finalizada", "Finalizada"),
         ("entregue", "Entregue"),
     ]:
-        ids[nome] = _abrir(client, veiculo.id, nome)
+        ids[nome] = _abrir(client, veiculo, nome)
         if destino:
             _avancar(client, ids[nome], servico.id, destino)
 

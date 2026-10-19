@@ -27,7 +27,7 @@ def _cenario(db_session, client, cpf_cnpj: str | None = CPF_CLIENTE):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     return ordem_id
@@ -94,7 +94,7 @@ def test_consulta_mostra_servicos_e_orcamento(
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})

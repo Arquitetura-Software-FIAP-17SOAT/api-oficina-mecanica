@@ -30,7 +30,7 @@ def _ordem_aguardando_aprovacao(client, db_session):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
     client.post(
@@ -175,7 +175,7 @@ def _ordem_recebida(client, db_session):
     servico = criar_servico(db_session)
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
     return ordem_id, servico
 
