@@ -83,6 +83,25 @@ Cada módulo segue a estrutura `main.tf` / `variables.tf` / `outputs.tf`.
 | kind CLI (para `kind load docker-image`) | ✔ | — |
 | AWS CLI v2 (também usado na autenticação do provider Kubernetes) | — | ✔ |
 
+## Variáveis e credenciais
+
+Nenhuma variável do Terraform é obrigatória: todas têm default em `variables.tf`, com a descrição
+de cada uma. Para mudar algum valor, copie `terraform.tfvars.example` para `terraform.tfvars`
+(ignorado pelo Git) e edite.
+
+O que precisa ser obtido fora do repositório:
+
+| Valor | Onde conseguir | Ambiente |
+|---|---|---|
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | AWS Academy → Learner Lab → **Start Lab** → **AWS Details** → **AWS CLI: Show**. Expiram quando a sessão do lab termina; a cada novo Start Lab é preciso copiá-las de novo (como variáveis de ambiente ou em `~/.aws/credentials`) | `prd` |
+| Nome do bucket do state | Escolhido por você no passo 2 do `prd`. O nome precisa ser único em todo o S3, ex.: `oficina-tfstate-<seu-usuario>` | `prd` |
+| `roleName` | `voclabs` na AWS Academy. Confira com `aws sts get-caller-identity`: o ARN mostra `assumed-role/voclabs/...` | `prd` |
+| Senha do banco | Não é informada: o Terraform gera. Para consultar a URL completa: `kubectl get secret oficina-db -n oficina -o jsonpath="{.data.DATABASE_URL}" \| base64 -d` | `dev` e `prd` |
+
+O Terraform não lê o `.env` da raiz do projeto, que é usado apenas pelo `docker compose`. O
+`APP_ENV` também não é lido pelo Terraform nem pela API: é uma variável do shell que só escolhe o
+diretório em `envs/`.
+
 ## Como aplicar
 
 Defina o ambiente e use o diretório correspondente:
