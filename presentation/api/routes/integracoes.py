@@ -5,10 +5,8 @@ Router separado de ``ordens_servico.py`` pelo mesmo motivo de
 um sistema externo se autentica por chave de API (``X-API-Key``).
 """
 
-from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
 
 from application.commands.aprovar_orcamento_ordem_servico import (
     AprovarOrcamentoOrdemServicoCommand,
@@ -39,6 +37,12 @@ from application.commands.retornar_ordem_servico_para_diagnostico import (
     RetornarOrdemServicoParaDiagnosticoUseCase,
 )
 from presentation.api.error_handling import ordem_servico_ou_404, traduzir_erros
+from presentation.api.schemas.integracoes import (
+    AtualizacaoStatusRequest,
+    AtualizacaoStatusResponse,
+    DecisaoOrcamentoRequest,
+    DecisaoOrcamentoResponse,
+)
 from presentation.dependencies.dependencies import (
     get_aprovar_orcamento_use_case,
     get_entregar_ordem_servico_use_case,
@@ -55,22 +59,6 @@ router = APIRouter(
     tags=["Integrações Externas"],
     dependencies=[Depends(validar_chave_integracao)],
 )
-
-
-class DecisaoOrcamentoRequest(BaseModel):
-    """Decisão do cliente sobre o orçamento, informada por um sistema externo."""
-
-    decisao: Literal["aprovado", "recusado"] = Field(
-        description="Se o cliente aprovou ou recusou o orçamento.",
-        examples=["aprovado"],
-    )
-
-
-class DecisaoOrcamentoResponse(BaseModel):
-    ordem_servico_id: int
-    status: str
-    status_orcamento: str
-    message: str
 
 
 @router.post(
@@ -114,37 +102,6 @@ async def receber_decisao_orcamento(
             status_orcamento=ordem_servico.status_orcamento.value,
             message=mensagem,
         )
-
-
-AcaoStatus = Literal[
-    "iniciar_diagnostico",
-    "enviar_para_aprovacao",
-    "retornar_para_diagnostico",
-    "finalizar",
-    "entregar",
-]
-
-
-class AtualizacaoStatusRequest(BaseModel):
-    """Pedido de mudança de status vindo de uma ferramenta externa (ex.: e-mail)."""
-
-    acao: AcaoStatus = Field(
-        description="Ação que muda o status da OS.",
-        examples=["iniciar_diagnostico"],
-    )
-    observacoes: Optional[str] = Field(
-        None,
-        description=(
-            "Texto livre do e-mail. Vira observação da OS (ou o motivo, em "
-            "`retornar_para_diagnostico`)."
-        ),
-    )
-
-
-class AtualizacaoStatusResponse(BaseModel):
-    ordem_servico_id: int
-    status: str
-    message: str
 
 
 @router.post(

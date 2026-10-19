@@ -86,10 +86,5 @@ def test_rotas_nao_definem_schemas_pydantic():
             ):
                 violacoes.append(f"{arquivo.relative_to(RAIZ)} define {no.name}")
 
-    # clientes, servicos, veiculos, users, consulta_publica e integracoes ainda
-    # mantêm seus schemas junto das rotas; a regra vale para os já separados.
-    separados = ("ordens_servico.py", "insumos.py")
-    violacoes = [v for v in violacoes if any(f"/{nome} " in v for nome in separados)]
-
     assert not violacoes, "\n".join(violacoes)
 

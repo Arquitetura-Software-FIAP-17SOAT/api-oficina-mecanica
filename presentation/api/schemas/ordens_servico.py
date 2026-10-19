@@ -4,6 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+
 class ServicoSolicitadoRequest(BaseModel):
     """Serviço do catálogo solicitado na abertura da OS"""
     servico_id: str = Field(..., description="ID do serviço")
@@ -110,6 +111,7 @@ class FinalizarExecucaoRequest(BaseModel):
         description="Data e hora de término (ISO 8601). Se omitida, usa a hora atual.",
         examples=["2025-01-15T12:30:00Z"],
     )
+
 
 class OrdemServicoResponse(BaseModel):
     """Response com os dados da ordem de serviço"""
