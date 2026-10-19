@@ -56,14 +56,6 @@ exigiria Redis e só vale se o limite por IP não bastar.
 O enunciado da Fase 2 escreve `Diagnóstico` e `Execução`; a API devolve `Em diagnóstico` e
 `Em execução`. São os mesmos estados, só muda a grafia. Sem ação necessária.
 
-### 🟡 Abertura de OS: `cliente_id` é opcional
-O enunciado da Fase 2 diz que a abertura "recebe os dados do cliente, veículo, serviços e peças".
-Em `POST /ordens-servico` o veículo é obrigatório e o cliente é identificado por ele (cada veículo
-pertence a um cliente); `cliente_id` é opcional e, se enviado, precisa ser o dono do veículo (senão
-400). Atende à intenção, mas não é literalmente "receber o cliente". Se a avaliação exigir, tornar
-`cliente_id` obrigatório é uma mudança pequena: o campo deixa de ser opcional em
-`CriarOrdemServicoRequest` e os testes e o `scripts/teste_fluxo_api.sh` passam a enviá-lo.
-
 ### 🟡 Itens podem mudar durante a execução
 Em `Em execução` ainda é possível acrescentar serviço ou peça (aparecem durante o trabalho) e o
 total passa a divergir do orçamento aprovado. O enunciado da Fase 1 fala em "autorizar reparos

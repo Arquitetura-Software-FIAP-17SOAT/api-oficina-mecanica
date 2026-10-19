@@ -71,8 +71,8 @@ Parte destes itens já estava coberta pela Fase 1; abaixo, o que foi feito em ca
 
 - [x] **Abertura de OS**: recebe os dados do cliente, veículo, serviços e peças; retorna a
       identificação única da OS.
-      Feito: `POST /ordens-servico` aceita `cliente_id` (opcional, validado contra o dono do
-      veículo), `servicos` e `insumos`; valida tudo antes de gravar (serviço/insumo inexistente ou
+      Feito: `POST /ordens-servico` recebe `cliente_id` (obrigatório, validado contra o dono do
+      veículo), `veiculo_id`, `servicos` e `insumos`; valida tudo antes de gravar (serviço/insumo inexistente ou
       estoque insuficiente não criam a OS nem baixam estoque) e retorna o `id`. Testes em
       `tests/integration/api/test_abertura_os_completa_api.py`.
       A gravação da OS e a baixa de estoque são uma única transação (unidade de trabalho):
