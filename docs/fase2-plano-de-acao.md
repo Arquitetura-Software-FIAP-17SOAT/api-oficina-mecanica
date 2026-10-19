@@ -44,7 +44,7 @@ escalabilidade**, incorporando práticas modernas de infraestrutura e automaçã
       (`application/`, `domain/`, `adapters/`, `presentation/`).
       Feito: erros e 404 das rotas centralizados em `presentation/api/error_handling.py`
       (`traduzir_erros`, `traduzir_value_error`, `encontrado_ou_404`, `exclusao_ou_404`); schemas e
-      conversores de OS e insumos em `presentation/api/schemas/` e `presentation/api/mappers/`
+      conversores de todos os recursos em `presentation/api/schemas/` e `presentation/api/mappers/`
       (`ordens_servico.py` foi de 1333 para 731 linhas, `insumos.py` de 437 para 251); seeders
       sem duplicação e scripts fora da raiz (`python -m adapters.database.seeders.executar`).
 - [x] **Clean Architecture / Arquitetura Hexagonal** (separação adequada de camadas e

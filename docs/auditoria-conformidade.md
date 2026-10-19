@@ -24,7 +24,7 @@ corrigidos está no `git log`. Abaixo do resumo ficam **apenas os pontos em aber
 | Atomicidade | OS + baixa de estoque numa única transação (abertura de OS, adicionar e remover insumo) | `application/ports/unit_of_work.py`, `adapters/database/transaction.py` |
 | Orçamento imutável em aprovação | Itens não mudam em `Aguardando aprovação`, `Finalizada` nem `Entregue` | `OrdemServico._validar_edicao_de_itens` |
 | Chave JWT | Lida de `JWT_SECRET_KEY`/`JWT_ALGORITHM`/`JWT_EXPIRE_MINUTES` (também do `.env`), obrigatória e sem valor padrão no código; o compose traz valores públicos de desenvolvimento, documentados no README | `adapters/config/config.py`, `docker-compose.yml` |
-| Schemas das rotas | Requests/responses de OS e insumos em `presentation/api/schemas/`, conversores de OS em `presentation/api/mappers/`; `openapi.json` idêntico ao anterior | `presentation/api/` |
+| Schemas das rotas | Requests/responses de todos os recursos em `presentation/api/schemas/` e conversores em `presentation/api/mappers/`; nenhuma rota define `BaseModel` (teste); `openapi.json` idêntico ao anterior | `presentation/api/` |
 | Scripts e seeders | `create_schema.py` e `seed.py` removidos da raiz (`python -m adapters.database.seeders.executar`, que cria as tabelas antes de popular); sessão segura, catálogo de marcas único, seeders testados e na cobertura; dados de exemplo (usuário com senha conhecida) só com `SEED_DADOS_EXEMPLO=true`, definido no `docker-compose.yml`; IDs de status derivados do enum | `adapters/database/seeders/` |
 | Configuração da aplicação | `echo` do SQL controlado por `SQL_ECHO` (desligado por padrão); tabelas criadas na subida (`lifespan`), não ao importar o `main.py` | `adapters/database/database.py`, `main.py` |
 | APIs da Fase 2 | Abertura completa de OS, consulta de status, aprovação e atualização de status por sistema externo (`X-API-Key`), listagem ordenada com exclusão lógica | `presentation/api/routes/` |
@@ -75,13 +75,11 @@ de agregados no domínio, serviços técnicos na aplicação.
 
 ## 3. Refatoração restante
 
-### 🟡 Schemas ainda junto das rotas nos demais recursos
-`ordens_servico.py` e `insumos.py` já têm requests/responses em `presentation/api/schemas/` e os
-conversores de OS em `presentation/api/mappers/` (regra verificada por teste). `clientes.py`,
-`servicos.py`, `veiculos.py`, `users.py`, `consulta_publica.py` e `integracoes.py` ainda mantêm os
-schemas no mesmo arquivo das rotas; são arquivos pequenos (≤ 280 linhas), então é opcional.
-`ordens_servico.py` continua com ~730 linhas de endpoints; dividi-lo em routers menores (ordens,
-status, itens/insumos, execução) só vale se isso ainda incomodar.
+### 🟡 `ordens_servico.py` ainda é grande
+Todos os recursos já têm requests/responses em `presentation/api/schemas/` (e os conversores de OS e
+da consulta pública em `presentation/api/mappers/`); nenhuma rota define `BaseModel`, regra
+verificada por teste. O `ordens_servico.py` continua com ~730 linhas só de endpoints; dividi-lo em
+routers menores (ordens, status, itens/insumos, execução) só vale se isso ainda incomodar.
 
 ---
 
