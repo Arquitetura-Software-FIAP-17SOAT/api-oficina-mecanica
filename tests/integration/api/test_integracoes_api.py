@@ -30,7 +30,7 @@ def _ordem_aguardando_aprovacao(client, db_session):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
     client.post(
@@ -121,6 +121,20 @@ def test_integracao_desligada_sem_chave_configurada_retorna_503(
     assert resposta.status_code == 503
 
 
+def test_chave_vazia_no_ambiente_tambem_desliga_a_integracao(
+    client, unauthenticated_client, db_session, monkeypatch
+):
+    """O compose repassa INTEGRACAO_API_KEY vazia quando a variável não foi definida."""
+    monkeypatch.setattr(settings, "INTEGRACAO_API_KEY", "")
+    ordem_id = _ordem_aguardando_aprovacao(client, db_session)
+
+    resposta = _notificar(
+        unauthenticated_client, ordem_id, "aprovado", headers={"X-API-Key": ""}
+    )
+
+    assert resposta.status_code == 503
+
+
 def test_os_inexistente_retorna_404(unauthenticated_client, db_session):
     seed_status_ordem_servico(db_session)
 
@@ -161,7 +175,7 @@ def _ordem_recebida(client, db_session):
     servico = criar_servico(db_session)
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
     return ordem_id, servico
 

@@ -46,6 +46,7 @@ def test_abertura_de_os_nao_cria_a_os_se_a_baixa_de_estoque_falha(
         "/ordens-servico",
         json={
             "veiculo_id": str(veiculo.id),
+            "cliente_id": veiculo.cliente_id,
             "descricao": "Revisão completa",
             "servicos": [{"servico_id": str(servico.id)}],
             "insumos": [{"insumo_id": insumo.id, "quantidade": 3}],
@@ -65,7 +66,7 @@ def test_adicionar_insumo_nao_deixa_estoque_baixado_se_a_os_nao_grava(
     insumo = criar_insumo(db_session, estoque=10)
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     async def save_que_falha(self, ordem_servico):

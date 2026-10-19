@@ -8,18 +8,18 @@ a fronteira de segurança explícita: tudo neste arquivo é acessível sem token
 por isso responde com menos dados que a rota administrativa equivalente.
 """
 
-from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field
 
 from application.queries.consultar_ordem_servico_publica import (
     ConsultarOrdemServicoPublicaQuery,
     ConsultarOrdemServicoPublicaUseCase,
 )
-from application.queries.get_ordem_servico_detalhada import OrdemServicoDetalhada
-from domain.value_objects.status_ordem_servico import StatusOrdemServico
+from presentation.api.mappers.consulta_publica import para_acompanhamento_response
+from presentation.api.schemas.consulta_publica import (
+    AcompanhamentoOrdemServicoResponse,
+    ConsultarOrdemServicoRequest,
+)
 from presentation.dependencies.dependencies import (
     get_consultar_ordem_servico_publica_use_case,
 )
@@ -32,63 +32,6 @@ router = APIRouter(
 ORDEM_NAO_ENCONTRADA = (
     "Ordem de serviço não encontrada para o número e documento informados."
 )
-
-
-class ConsultarOrdemServicoRequest(BaseModel):
-    """Dados que só o dono da OS reúne: o número dela e o próprio documento."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {"numero_os": 1, "cpf_cnpj": "529.982.247-25"}
-        }
-    )
-
-    numero_os: int = Field(
-        description="Número da ordem de serviço, informado na abertura.",
-        examples=[1],
-    )
-    cpf_cnpj: str = Field(
-        description=(
-            "CPF ou CNPJ cadastrado na ordem de serviço. "
-            "Aceita com ou sem máscara."
-        ),
-        examples=["529.982.247-25"],
-    )
-
-
-class ServicoAcompanhamentoResponse(BaseModel):
-    """Um serviço da OS, na visão do cliente."""
-
-    nome: Optional[str] = None
-    quantidade: int
-    valor_total: float
-
-
-class VeiculoAcompanhamentoResponse(BaseModel):
-    """Só o suficiente para o cliente reconhecer o próprio veículo."""
-
-    placa: str
-    modelo: str
-
-
-class AcompanhamentoOrdemServicoResponse(BaseModel):
-    """Andamento da OS. Enxuta de propósito — é uma resposta pública.
-
-    Não expõe identificadores internos (cliente, veículo, marca, usuário),
-    e-mail do cliente nem observações — este último é texto livre preenchido
-    por funcionários, que podem não contar com ele sendo visível ao cliente.
-    """
-
-    numero_os: int
-    status: str
-    status_descricao: str
-    descricao: str
-    veiculo: Optional[VeiculoAcompanhamentoResponse]
-    servicos: list[ServicoAcompanhamentoResponse]
-    orcamento: Optional[float]
-    valor_total_servicos: float
-    aguardando_sua_aprovacao: bool
-    atualizado_em: datetime
 
 
 @router.post(
@@ -129,39 +72,4 @@ async def consultar_ordem_servico(
             detail=ORDEM_NAO_ENCONTRADA,
         )
 
-    return _para_acompanhamento_response(detalhe)
-
-
-def _para_acompanhamento_response(
-    detalhe: OrdemServicoDetalhada,
-) -> AcompanhamentoOrdemServicoResponse:
-    ordem_servico = detalhe.ordem_servico
-
-    return AcompanhamentoOrdemServicoResponse(
-        numero_os=ordem_servico.id,
-        status=ordem_servico.status.value,
-        status_descricao=StatusOrdemServico.descrever_status(ordem_servico.status),
-        descricao=str(ordem_servico.descricao),
-        veiculo=(
-            VeiculoAcompanhamentoResponse(
-                placa=str(detalhe.veiculo.placa),
-                modelo=detalhe.veiculo.modelo,
-            )
-            if detalhe.veiculo
-            else None
-        ),
-        servicos=[
-            ServicoAcompanhamentoResponse(
-                nome=item.servico.nome if item.servico else None,
-                quantidade=item.quantidade,
-                valor_total=item.valor_total,
-            )
-            for item in detalhe.itens
-        ],
-        orcamento=ordem_servico.orcamento,
-        valor_total_servicos=detalhe.valor_total_itens,
-        aguardando_sua_aprovacao=(
-            ordem_servico.status == StatusOrdemServico.AGUARDANDO_APROVACAO
-        ),
-        atualizado_em=ordem_servico.data_atualizacao,
-    )
+    return para_acompanhamento_response(detalhe)

@@ -150,7 +150,8 @@ async def criar_ordem_servico(
     - Recebida → Em diagnóstico → Aguardando aprovação → Em execução → Finalizada → Entregue
 
     Validações aplicadas:
-    - veiculo_id: obrigatório
+    - cliente_id e veiculo_id: obrigatórios; o veículo precisa pertencer ao cliente
+    - servicos e insumos: opcionais; o estoque dos insumos é baixado na criação
     - descricao: mínimo 3 caracteres, máximo 1000
     - orcamento: opcional, deve ser positivo se informado
     """

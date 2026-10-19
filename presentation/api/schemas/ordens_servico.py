@@ -4,6 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+
 class ServicoSolicitadoRequest(BaseModel):
     """Serviço do catálogo solicitado na abertura da OS"""
     servico_id: str = Field(..., description="ID do serviço")
@@ -18,14 +19,11 @@ class InsumoSolicitadoRequest(BaseModel):
 
 class CriarOrdemServicoRequest(BaseModel):
     """Request para criar uma nova ordem de serviço"""
-    veiculo_id: str = Field(..., description="ID do veículo")
-    cliente_id: Optional[int] = Field(
-        None,
-        description=(
-            "ID do cliente. Opcional: o cliente é o dono do veículo; se informado, "
-            "precisa ser o dono do veículo."
-        ),
+    cliente_id: int = Field(
+        ...,
+        description="ID do cliente. Precisa ser o dono do veículo informado.",
     )
+    veiculo_id: str = Field(..., description="ID do veículo")
     servicos: list[ServicoSolicitadoRequest] = Field(
         default_factory=list, description="Serviços a executar"
     )
@@ -110,6 +108,7 @@ class FinalizarExecucaoRequest(BaseModel):
         description="Data e hora de término (ISO 8601). Se omitida, usa a hora atual.",
         examples=["2025-01-15T12:30:00Z"],
     )
+
 
 class OrdemServicoResponse(BaseModel):
     """Response com os dados da ordem de serviço"""

@@ -26,6 +26,7 @@ class TestCriarOrdemServicoUseCase:
         # Mock do veículo existente
         mock_veiculo = Mock()
         mock_veiculo.id = 1
+        mock_veiculo.cliente_id = 7
         mock_veiculo_repository.find_by_id.return_value = mock_veiculo
 
         use_case = CriarOrdemServicoUseCase(
@@ -37,6 +38,7 @@ class TestCriarOrdemServicoUseCase:
         )
 
         command = CriarOrdemServicoCommand(
+            cliente_id=7,
             veiculo_id="1",
             descricao="Troca de óleo",
             orcamento=150.00,
@@ -71,6 +73,7 @@ class TestCriarOrdemServicoUseCase:
         )
         
         command = CriarOrdemServicoCommand(
+            cliente_id=1,
             veiculo_id="999",  # ID inexistente
             descricao="Troca de óleo",
         )
@@ -122,6 +125,7 @@ async def test_desfaz_a_transacao_quando_a_baixa_de_estoque_falha():
     with pytest.raises(RuntimeError):
         await use_case.execute(
             CriarOrdemServicoCommand(
+                cliente_id=1,
                 veiculo_id="1",
                 descricao="Troca de filtro",
                 insumos=[InsumoSolicitado(insumo_id=10, quantidade=2)],
@@ -130,3 +134,26 @@ async def test_desfaz_a_transacao_quando_a_baixa_de_estoque_falha():
 
     assert unit_of_work.confirmada == 0
     assert unit_of_work.desfeita == 1
+
+
+@pytest.mark.asyncio
+async def test_falha_quando_o_veiculo_pertence_a_outro_cliente():
+    veiculos = AsyncMock(spec=VeiculoRepository)
+    veiculos.find_by_id.return_value = Mock(id=1, cliente_id=7)
+    ordens = AsyncMock(spec=OrdemServicoRepository)
+
+    use_case = CriarOrdemServicoUseCase(
+        ordem_servico_repository=ordens,
+        veiculo_repository=veiculos,
+        servico_repository=AsyncMock(spec=ServicoRepository),
+        insumo_repository=AsyncMock(spec=InsumoRepository),
+        unit_of_work=UnitOfWorkFalso(),
+    )
+
+    with pytest.raises(ValueError, match="não pertence ao cliente"):
+        await use_case.execute(
+            CriarOrdemServicoCommand(cliente_id=99, veiculo_id="1", descricao="Troca de óleo")
+        )
+
+    ordens.save.assert_not_called()
+

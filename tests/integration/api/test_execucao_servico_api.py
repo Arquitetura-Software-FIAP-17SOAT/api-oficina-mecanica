@@ -23,7 +23,7 @@ def _criar_ordem_em_execucao(client, db_session, servico_id):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
     client.post(
@@ -292,7 +292,7 @@ def test_impede_iniciar_execucao_fora_do_status_em_execucao(client, db_session):
     servico = criar_servico(db_session)
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     response = client.post(
@@ -309,7 +309,7 @@ def test_impede_finalizar_execucao_fora_do_status_em_execucao(client, db_session
     servico = criar_servico(db_session)
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     response = client.post(

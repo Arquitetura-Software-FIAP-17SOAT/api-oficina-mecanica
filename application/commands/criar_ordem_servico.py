@@ -30,11 +30,11 @@ class InsumoSolicitado:
 @dataclass
 class CriarOrdemServicoCommand:
     """Comando para criação de ordem de serviço."""
+    cliente_id: int
     veiculo_id: str
     descricao: str
     orcamento: float = None
     observacoes: str = None
-    cliente_id: int | None = None
     servicos: list[ServicoSolicitado] = field(default_factory=list)
     insumos: list[InsumoSolicitado] = field(default_factory=list)
 
@@ -77,7 +77,7 @@ class CriarOrdemServicoUseCase:
                 f"Veículo com ID {command.veiculo_id} não encontrado no banco de dados"
             )
 
-        if command.cliente_id is not None and command.cliente_id != veiculo.cliente_id:
+        if command.cliente_id != veiculo.cliente_id:
             raise ValueError("O veículo informado não pertence ao cliente informado")
 
         # Cria a entidade (com validações automáticas)

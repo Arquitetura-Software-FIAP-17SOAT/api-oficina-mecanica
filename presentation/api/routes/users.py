@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel, EmailStr
 
 from application.commands.register_user import (
     RegisterUserCommand,
@@ -10,6 +9,12 @@ from application.commands.login_user import (
     LoginUserUseCase,
 )
 from presentation.api.error_handling import traduzir_value_error
+from presentation.api.schemas.users import (
+    LoginRequest,
+    LoginResponse,
+    RegisterUserRequest,
+    RegisterUserResponse,
+)
 from presentation.dependencies.dependencies import (
     get_register_user_use_case,
     get_login_user_use_case,
@@ -19,27 +24,6 @@ router = APIRouter(
     prefix="/users",
     tags=["Users"],
 )
-
-
-class RegisterUserRequest(BaseModel):
-    name: str
-    email: EmailStr
-    password: str
-
-
-class RegisterUserResponse(BaseModel):
-    user_id: int
-    message: str
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class LoginResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
 
 
 @router.post(

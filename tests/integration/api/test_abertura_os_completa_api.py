@@ -54,7 +54,7 @@ def test_abertura_sem_servicos_e_pecas_continua_valida(client, db_session):
 
     resposta = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     )
 
     assert resposta.status_code == 201
@@ -85,6 +85,7 @@ def test_servico_inexistente_retorna_404_e_nao_cria_os(client, db_session):
         "/ordens-servico",
         json={
             "veiculo_id": str(veiculo.id),
+            "cliente_id": veiculo.cliente_id,
             "descricao": "Revisão completa",
             "servicos": [{"servico_id": "9999"}],
         },
@@ -103,6 +104,7 @@ def test_estoque_insuficiente_nao_cria_os_nem_baixa_estoque(client, db_session):
         "/ordens-servico",
         json={
             "veiculo_id": str(veiculo.id),
+            "cliente_id": veiculo.cliente_id,
             "descricao": "Revisão completa",
             "servicos": [{"servico_id": str(servico.id)}],
             "insumos": [{"insumo_id": insumo.id, "quantidade": 5}],
@@ -121,6 +123,7 @@ def test_insumo_inexistente_retorna_404(client, db_session):
         "/ordens-servico",
         json={
             "veiculo_id": str(veiculo.id),
+            "cliente_id": veiculo.cliente_id,
             "descricao": "Revisão completa",
             "insumos": [{"insumo_id": 9999}],
         },

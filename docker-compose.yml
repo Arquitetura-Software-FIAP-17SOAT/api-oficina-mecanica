@@ -28,9 +28,11 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/oficina
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-42b38697d6c921058ddcfdd5ed5d89faf0c671e3}
+      # Valores de DESENVOLVIMENTO: funcionam sem configurar nada. Em produção, defina no .env.
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-segredo-jwt-somente-para-desenvolvimento}
       JWT_ALGORITHM: HS256
       JWT_EXPIRE_MINUTES: 60
+      INTEGRACAO_API_KEY: ${INTEGRACAO_API_KEY:-chave-integracao-somente-para-desenvolvimento}
       SEED_DADOS_EXEMPLO: "true"
     volumes:
       - .:/app

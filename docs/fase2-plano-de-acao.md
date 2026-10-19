@@ -42,40 +42,37 @@ escalabilidade**, incorporando práticas modernas de infraestrutura e automaçã
 
 - [x] **Clean Code** (nomes claros, simplicidade, coesão): revisar os módulos existentes
       (`application/`, `domain/`, `adapters/`, `presentation/`).
-      Feito: `presentation/api/routes/ordens_servico.py` (1333 → 1002 linhas) deixou de repetir
-      `try/except` e o 404 em cada endpoint; passou a usar `presentation/api/error_handling.py`
-      (`traduzir_erros`, `ordem_servico_ou_404`) e helpers de conversão de resposta.
+      Feito: erros e 404 das rotas centralizados em `presentation/api/error_handling.py`
+      (`traduzir_erros`, `traduzir_value_error`, `encontrado_ou_404`, `exclusao_ou_404`); schemas e
+      conversores de todos os recursos em `presentation/api/schemas/` e `presentation/api/mappers/`
+      (`ordens_servico.py` foi de 1333 para 731 linhas, `insumos.py` de 437 para 251); seeders
+      sem duplicação e scripts fora da raiz (`python -m adapters.database.seeders.executar`).
 - [x] **Clean Architecture / Arquitetura Hexagonal** (separação adequada de camadas e
       dependências): confirmar que as camadas já separadas
       (`domain` → `application` → `adapters`/`presentation`) não têm dependências invertidas
       (ex.: `domain` importando de `adapters`).
-      Feito: `domain` não importa nada fora de si; `application` só importa `domain` e suas
-      portas (`application/ports`: `PasswordHasher`, `TokenGenerator`; repositórios em
-      `domain/repositories`). Os 3 use cases que usavam SQLAlchemy direto passaram a usar
-      repositórios. `adapters` implementa as portas; `presentation` só toca
-      `adapters` em `presentation/dependencies` (composição). A regra é garantida por
-      `tests/unit/test_arquitetura.py`.
-- [x] **Testes automatizados**: já há suíte em `tests/` (614 testes, 99% de cobertura de
-      `application/` + `presentation/`) — validar que os fluxos críticos da Fase 2 (abaixo) também
-      ficam cobertos.
-      Feito: fluxos já existentes (abertura de OS, consulta de status, aprovação/rejeição de
-      orçamento, execução de serviço, consulta pública) estão cobertos por testes de API e de
-      use case; lacunas fechadas em `finalizar_execucao_servico` e `error_handling`, e a regra de
-      camadas tem teste próprio. **Pendente:** ordenação por status/antiguidade e exclusão lógica
-      de `Finalizada`/`Entregue` na listagem (seção 2) ainda não existem — os testes devem ser
-      escritos junto com essa implementação.
+      Feito: `domain` não importa nada fora de si; `application` só importa `domain` e as suas
+      portas (`application/ports`: `PasswordHasher`, `TokenGenerator`, `TokenDecoder`,
+      `UnitOfWork`; repositórios em `domain/repositories`). `adapters` (antes `infrastructure`)
+      implementa as portas; `presentation` só toca `adapters` nos arquivos de composição de
+      `presentation/dependencies`. A regra é garantida por `tests/unit/test_arquitetura.py`.
+- [x] **Testes automatizados**: suíte em `tests/` com 698 testes e 99% de cobertura nos quatro
+      pacotes — fluxos críticos da Fase 2 cobertos.
+      Feito: abertura de OS (inclusive atomicidade com o estoque), consulta de status, aprovação e
+      atualização de status por sistema externo, listagem ordenada com exclusão lógica, execução de
+      serviço e consulta pública têm testes de API e de caso de uso; a regra de camadas e a de
+      schemas fora das rotas têm teste próprio.
 
 ## 2. APIs — alterar/criar
 
 Enunciado: refatorar o código da Fase 1 (seção 1) e alterar/criar as APIs abaixo.
 
-Verificar o que já existe em `presentation/api/routes/ordens_servico.py` e
-`consulta_publica.py` antes de implementar — grande parte pode já estar coberta pela Fase 1.
+Parte destes itens já estava coberta pela Fase 1; abaixo, o que foi feito em cada um.
 
 - [x] **Abertura de OS**: recebe os dados do cliente, veículo, serviços e peças; retorna a
       identificação única da OS.
-      Feito: `POST /ordens-servico` aceita `cliente_id` (opcional, validado contra o dono do
-      veículo), `servicos` e `insumos`; valida tudo antes de gravar (serviço/insumo inexistente ou
+      Feito: `POST /ordens-servico` recebe `cliente_id` (obrigatório, validado contra o dono do
+      veículo), `veiculo_id`, `servicos` e `insumos`; valida tudo antes de gravar (serviço/insumo inexistente ou
       estoque insuficiente não criam a OS nem baixam estoque) e retorna o `id`. Testes em
       `tests/integration/api/test_abertura_os_completa_api.py`.
       A gravação da OS e a baixa de estoque são uma única transação (unidade de trabalho):
@@ -129,8 +126,8 @@ Criar manifestos YAML para deploy em Kubernetes, contemplando:
 - [ ] `Deployment`
 - [ ] `Service`
 - [ ] `ConfigMap` + `Secret` (variáveis sensíveis, ex. tokens de serviços externos)
-      Segredos da aplicação: `JWT_SECRET_KEY` e `INTEGRACAO_API_KEY` (a leitura da chave JWT precisa
-      ser corrigida antes — ver `docs/auditoria-conformidade.md`, seção 1).
+      Segredos da aplicação: `JWT_SECRET_KEY` (obrigatória, a aplicação não sobe sem ela) e
+      `INTEGRACAO_API_KEY`. Podem reutilizar os valores de desenvolvimento do README.
 - [ ] `HorizontalPodAutoscaler` (escala por CPU/memória)
 - [ ] `Ingress` com limite de requisições (complementar ao enunciado): protege a consulta pública
       `POST /consulta/ordens-servico` contra força bruta de CPF/CNPJ. Anotações do `ingress-nginx`
@@ -162,11 +159,15 @@ Pipeline de CI/CD configurada (GitHub Actions, GitLab CI, etc.) que execute:
       manifestos Kubernetes em `/k8s`, scripts Terraform em `/infra` e arquivos de configuração da
       pipeline CI/CD.
 - [ ] `README.md` atualizado com:
-  - [ ] Descrição da solução e objetivos da fase.
+  - [x] Descrição da solução e objetivos da fase (README: "Objetivos" e "Estado da
+        Fase 2").
   - [ ] Desenho da arquitetura proposta, incluindo: componentes da aplicação, infraestrutura
-        provisionada e fluxo de deploy.
+        provisionada e fluxo de deploy. (Componentes da aplicação: README, "Arquitetura"; faltam a
+        infraestrutura provisionada e o fluxo de deploy.)
   - [ ] Instruções: execução local, deploy em Kubernetes, provisionamento via Terraform.
-  - [ ] Link para a collection completa das APIs (Postman, Swagger ou similar).
+        (Execução local: feita; Kubernetes e Terraform: pendentes.)
+  - [ ] Link para a collection completa das APIs (Postman, Swagger ou similar). (O README já traz a
+        tabela de rotas e o link local do Swagger; falta o `openapi.json` exportado e a collection.)
   - [ ] Link para vídeo demonstrativo do ambiente em execução, publicado no YouTube ou Vimeo
         (público ou não listado), de até 15 minutos. Deve demonstrar: deploy da aplicação,
         execução do CI/CD, consumo das APIs e escalabilidade automática (pode simular aumento de
