@@ -94,6 +94,24 @@ consultáveis pelo detalhe).
 - **Maturidade e ecossistema:** open source, bom suporte no SQLAlchemy e imagem oficial leve
   (`postgres:16-alpine`) para o Docker Compose.
 
+## Infraestrutura (Terraform)
+
+Os scripts em [`infra/`](infra/README.md) provisionam o cluster Kubernetes e o banco de dados em
+dois ambientes, selecionados pelo `APP_ENV`:
+
+- `dev`: cluster local com kind e PostgreSQL no próprio cluster;
+- `prd`: Amazon EKS e Amazon RDS PostgreSQL na AWS Academy.
+
+```bash
+cd infra/envs/$APP_ENV
+terraform init        # no prd: terraform init -backend-config="bucket=<bucket-do-state>"
+terraform plan
+terraform apply
+```
+
+Recursos criados, variáveis, outputs e a integração com os manifests em `/k8s`:
+[`infra/README.md`](infra/README.md).
+
 ## Testes e cobertura
 
 ```bash
@@ -117,7 +135,8 @@ A configuração está em `pyproject.toml`; ficam de fora só `main.py` e as int
 | Clean Code, Clean Architecture/Hexagonal e testes automatizados | Concluído |
 | APIs: abertura de OS, consulta de status, aprovação de orçamento externa, listagem ordenada com exclusão lógica e atualização de status por ferramenta externa | Concluído |
 | Dockerfile e docker-compose revisados | Em andamento (funcionam em desenvolvimento) |
-| Manifestos Kubernetes (`/k8s`), Terraform (`/infra`) e pipeline de CI/CD | Pendente |
+| Terraform (`/infra`): cluster Kubernetes e banco de dados | Concluído (`dev` aplicado e testado; `prd` validado, sem `apply`) |
+| Manifestos Kubernetes (`/k8s`) e pipeline de CI/CD | Pendente |
 | Collection das APIs, desenho da infraestrutura e vídeo | Pendente |
 
 ## Limitações conhecidas
