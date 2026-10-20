@@ -4,15 +4,18 @@ import pytest
 from fastapi import HTTPException
 from jose import jwt
 
-from infrastructure.config.config import settings
-from infrastructure.config.security import create_access_token
+from adapters.config.config import settings
+from adapters.auth.jwt_token_decoder import JWTTokenDecoder
+from adapters.config.security import create_access_token
 from presentation.dependencies.auth_dependencies import get_current_user
+
+DECODER = JWTTokenDecoder()
 
 
 def test_get_current_user_com_token_valido():
     token = create_access_token({"sub": "1", "email": "user@example.com"})
 
-    payload = get_current_user(token)
+    payload = get_current_user(token, DECODER)
 
     assert payload["sub"] == "1"
     assert payload["email"] == "user@example.com"
@@ -20,7 +23,7 @@ def test_get_current_user_com_token_valido():
 
 def test_get_current_user_com_token_invalido():
     with pytest.raises(HTTPException) as exc_info:
-        get_current_user("token-invalido")
+        get_current_user("token-invalido", DECODER)
 
     assert exc_info.value.status_code == 401
 
@@ -33,7 +36,7 @@ def test_get_current_user_com_token_expirado():
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        get_current_user(token)
+        get_current_user(token, DECODER)
 
     assert exc_info.value.status_code == 401
 
@@ -46,6 +49,6 @@ def test_get_current_user_sem_claim_sub():
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        get_current_user(token)
+        get_current_user(token, DECODER)
 
     assert exc_info.value.status_code == 401

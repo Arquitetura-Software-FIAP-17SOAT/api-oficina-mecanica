@@ -23,16 +23,16 @@ def _criar_ordem_em_execucao(client, db_session, servico_id):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
     client.post(
-        f"/ordens-servico/{ordem_id}/enviar-aprovacao",
-        json={"orcamento": 200.0},
-    )
-    client.post(
         f"/ordens-servico/{ordem_id}/adicionar-item",
         json={"servico_id": str(servico_id), "quantidade": 1},
+    )
+    client.post(
+        f"/ordens-servico/{ordem_id}/enviar-aprovacao",
+        json={"orcamento": 200.0},
     )
     client.post(f"/ordens-servico/{ordem_id}/aprovar-executar")
 
@@ -292,7 +292,7 @@ def test_impede_iniciar_execucao_fora_do_status_em_execucao(client, db_session):
     servico = criar_servico(db_session)
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     response = client.post(
@@ -302,3 +302,34 @@ def test_impede_iniciar_execucao_fora_do_status_em_execucao(client, db_session):
 
     assert response.status_code == 400
     assert "precisa estar em execução" in response.json()["detail"]
+
+def test_impede_finalizar_execucao_fora_do_status_em_execucao(client, db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+    servico = criar_servico(db_session)
+    ordem_id = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
+    ).json()["id"]
+
+    response = client.post(
+        f"/ordens-servico/{ordem_id}/servicos/{servico.id}/finalizar",
+        json={},
+    )
+
+    assert response.status_code == 400
+    assert "precisa estar em execução" in response.json()["detail"]
+
+
+def test_impede_finalizar_servico_nao_associado_a_os(client, db_session):
+    servico = criar_servico(db_session)
+    outro_servico = criar_servico(db_session, nome="Alinhamento")
+    ordem_id = _criar_ordem_em_execucao(client, db_session, servico.id)
+
+    response = client.post(
+        f"/ordens-servico/{ordem_id}/servicos/{outro_servico.id}/finalizar",
+        json={},
+    )
+
+    assert response.status_code == 400
+    assert "não encontrado na ordem" in response.json()["detail"]

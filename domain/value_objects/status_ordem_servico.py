@@ -57,3 +57,18 @@ class StatusOrdemServico(str, Enum):
             StatusOrdemServico.ENTREGUE: "Veículo entregue ao cliente",
         }
         return descricoes.get(status, "Status desconhecido")
+
+
+# Ordem em que a oficina atende: o que está em execução vem primeiro.
+PRIORIDADE_NA_LISTAGEM = (
+    StatusOrdemServico.EM_EXECUCAO,
+    StatusOrdemServico.AGUARDANDO_APROVACAO,
+    StatusOrdemServico.EM_DIAGNOSTICO,
+    StatusOrdemServico.RECEBIDA,
+)
+
+# OS encerradas saem da listagem (exclusão lógica: continuam no banco).
+STATUS_ENCERRADOS = (
+    StatusOrdemServico.FINALIZADA,
+    StatusOrdemServico.ENTREGUE,
+)

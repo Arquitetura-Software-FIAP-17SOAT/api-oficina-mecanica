@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from application.ports.unit_of_work import UnitOfWork
 from domain.entities.ordem_servico import OrdemServico
 from domain.repositories.insumo_repository import InsumoRepository
 from domain.repositories.ordem_servico_repository import OrdemServicoRepository
@@ -24,9 +25,11 @@ class RemoverInsumoOrdemServicoUseCase:
         self,
         ordem_servico_repository: OrdemServicoRepository,
         insumo_repository: InsumoRepository,
+        unit_of_work: UnitOfWork,
     ):
         self.ordem_servico_repository = ordem_servico_repository
         self.insumo_repository = insumo_repository
+        self.unit_of_work = unit_of_work
 
     async def execute(
         self, command: RemoverInsumoOrdemServicoCommand
@@ -42,8 +45,9 @@ class RemoverInsumoOrdemServicoUseCase:
 
         insumo = await self.insumo_repository.find_by_id(command.insumo_id)
 
-        if insumo is not None:
-            insumo.adicionar_estoque(quantidade)
-            await self.insumo_repository.update(insumo)
+        async with self.unit_of_work:
+            if insumo is not None:
+                insumo.adicionar_estoque(quantidade)
+                await self.insumo_repository.update(insumo)
 
-        return await self.ordem_servico_repository.save(ordem_servico)
+            return await self.ordem_servico_repository.save(ordem_servico)

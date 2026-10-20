@@ -1,20 +1,30 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-from infrastructure.database.database import create_tables
+from adapters.database.database import create_tables
 from presentation.api.routes.clientes import router as clientes_router
 from presentation.api.routes.consulta_publica import router as consulta_publica_router
+from presentation.api.routes.integracoes import router as integracoes_router
 from presentation.api.routes.insumos import router as insumos_router
 from presentation.api.routes.servicos import router as servicos_router
 from presentation.api.routes.users import router as users_router
 from presentation.api.routes.ordens_servico import router as ordens_servico_router
 from presentation.api.routes.veiculos import router as veiculos_router
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Cria as tabelas na subida da aplicação, e não ao importar o módulo."""
+    create_tables()
+    yield
+
+
 app = FastAPI(
     title="API Oficina Mecânica",
     version="1.0.0",
+    lifespan=lifespan,
 )
-
-create_tables()
 
 app.include_router(users_router)
 app.include_router(ordens_servico_router)
@@ -23,6 +33,7 @@ app.include_router(servicos_router)
 app.include_router(clientes_router)
 app.include_router(veiculos_router)
 app.include_router(consulta_publica_router)
+app.include_router(integracoes_router)
 
 
 @app.get("/health")

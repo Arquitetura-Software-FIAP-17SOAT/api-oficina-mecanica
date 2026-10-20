@@ -5,8 +5,12 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
-# infrastructure/database/database.py requires DATABASE_URL at import time.
+# adapters/database/database.py requires DATABASE_URL at import time.
 # The test suite never talks to that engine (integration tests point every
 # repository at an in-memory SQLite session instead), so a placeholder is
 # enough to let the module import cleanly when no real .env is configured.
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
+# adapters/config/config.py exige JWT_SECRET_KEY (sem valor padrão); a suíte usa
+# um segredo próprio, que nunca é o de nenhum ambiente real.
+os.environ.setdefault("JWT_SECRET_KEY", "segredo-somente-para-testes")

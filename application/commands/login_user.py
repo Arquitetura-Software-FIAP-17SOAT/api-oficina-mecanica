@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
 from domain.repositories.user_repository import UserRepository
-from infrastructure.auth.password_hasher import PasswordHasher
-from infrastructure.config.security import create_access_token
+from application.ports.password_hasher import PasswordHasher
+from application.ports.token_generator import TokenGenerator
 
 
 @dataclass
@@ -20,9 +20,11 @@ class LoginUserUseCase:
         self,
         user_repository: UserRepository,
         password_hasher: PasswordHasher,
+        token_generator: TokenGenerator,
     ):
         self.user_repository = user_repository
         self.password_hasher = password_hasher
+        self.token_generator = token_generator
 
     async def execute(self, command: LoginUserCommand) -> str:
         user = await self.user_repository.find_by_email(command.email)
@@ -33,7 +35,7 @@ class LoginUserUseCase:
         if not self.password_hasher.verify(command.password, user.hashed_password):
             raise ValueError("Email ou senha inválidos.")
 
-        token = create_access_token(
+        token = self.token_generator.generate(
             {
                 "sub": str(user.id),
                 "email": user.email,

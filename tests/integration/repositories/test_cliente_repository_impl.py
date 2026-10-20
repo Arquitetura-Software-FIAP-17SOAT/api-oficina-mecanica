@@ -1,7 +1,7 @@
 import pytest
 
 from domain.entities.cliente import Cliente
-from infrastructure.database.repositories.cliente_repository_impl import (
+from adapters.database.repositories.cliente_repository_impl import (
     ClienteRepositoryImpl,
 )
 from tests.integration.conftest import (

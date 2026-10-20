@@ -9,10 +9,15 @@ from application.commands.adicionar_insumo_ordem_servico import (
 )
 from domain.entities.insumo import Insumo
 from domain.entities.ordem_servico import OrdemServico
+from tests.unit.fakes import UnitOfWorkFalso
 
 
 def _use_case(**overrides):
-    repos = dict(ordem_servico_repository=AsyncMock(), insumo_repository=AsyncMock())
+    repos = dict(
+        ordem_servico_repository=AsyncMock(),
+        insumo_repository=AsyncMock(),
+        unit_of_work=UnitOfWorkFalso(),
+    )
     repos.update(overrides)
     return AdicionarInsumoOrdemServicoUseCase(**repos), repos
 
@@ -114,3 +119,40 @@ async def test_insumo_sem_preco_unitario_usa_valor_zero():
     )
 
     assert resultado.insumos_utilizados[0]["valor"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_confirma_a_transacao_quando_tudo_da_certo():
+    ordem = OrdemServico(veiculo_id="1", descricao="Revisão completa")
+    ordem.id = 1
+    insumo = Insumo(id=10, nome="Óleo 5W30", preco_unitario="45.90", estoque=10)
+    use_case, repos = _use_case()
+    repos["ordem_servico_repository"].find_by_id.return_value = ordem
+    repos["ordem_servico_repository"].save.side_effect = lambda o: o
+    repos["insumo_repository"].find_by_id.return_value = insumo
+
+    await use_case.execute(
+        AdicionarInsumoOrdemServicoCommand(ordem_servico_id=1, insumo_id=10)
+    )
+
+    assert repos["unit_of_work"].confirmada == 1
+    assert repos["unit_of_work"].desfeita == 0
+
+
+@pytest.mark.asyncio
+async def test_desfaz_a_transacao_quando_a_gravacao_da_os_falha():
+    ordem = OrdemServico(veiculo_id="1", descricao="Revisão completa")
+    ordem.id = 1
+    insumo = Insumo(id=10, nome="Óleo 5W30", preco_unitario="45.90", estoque=10)
+    use_case, repos = _use_case()
+    repos["ordem_servico_repository"].find_by_id.return_value = ordem
+    repos["ordem_servico_repository"].save.side_effect = RuntimeError("banco caiu")
+    repos["insumo_repository"].find_by_id.return_value = insumo
+
+    with pytest.raises(RuntimeError):
+        await use_case.execute(
+            AdicionarInsumoOrdemServicoCommand(ordem_servico_id=1, insumo_id=10)
+        )
+
+    assert repos["unit_of_work"].confirmada == 0
+    assert repos["unit_of_work"].desfeita == 1

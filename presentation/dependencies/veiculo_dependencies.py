@@ -5,11 +5,11 @@ from application.commands.delete_veiculo import DeleteVeiculoUseCase
 from application.commands.update_veiculo import UpdateVeiculoUseCase
 from application.queries.get_veiculo import GetVeiculoUseCase
 from application.queries.list_veiculos import ListVeiculosUseCase
-from infrastructure.database.database import get_db
-from infrastructure.database.repositories.cliente_repository_impl import (
+from adapters.database.database import get_db
+from adapters.database.repositories.cliente_repository_impl import (
     ClienteRepositoryImpl,
 )
-from infrastructure.database.repositories.veiculo_repository_impl import (
+from adapters.database.repositories.veiculo_repository_impl import (
     VeiculoRepositoryImpl,
 )
 

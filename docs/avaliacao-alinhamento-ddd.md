@@ -136,7 +136,7 @@ como placar:
 - **`motivo` da transição descartado na persistência** — o domínio registra
   `{status, data, motivo}`, mas `historico_ordem_servico` não tem coluna de motivo e a releitura
   injeta o literal "Histórico recuperado do banco"
-  (`infrastructure/database/repositories/ordem_servico_repository_impl.py`);
+  (`adapters/database/repositories/ordem_servico_repository_impl.py`);
 - **Execução de serviço fora do domínio** — `iniciar/finalizar_execucao_servico.py` usam
   SQLAlchemy direto na camada de aplicação, com as regras (data futura, `data_fim ≥ data_inicio`)
   fora da entidade;

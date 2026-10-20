@@ -1,7 +1,7 @@
 import pytest
 
 from domain.entities.veiculo import Veiculo
-from infrastructure.database.repositories.veiculo_repository_impl import (
+from adapters.database.repositories.veiculo_repository_impl import (
     VeiculoRepositoryImpl,
 )
 from tests.integration.conftest import criar_cliente, criar_marca, criar_usuario, criar_veiculo
@@ -127,7 +127,7 @@ async def test_has_ordens_servico(db_session):
     repository = VeiculoRepositoryImpl(db_session)
     assert await repository.has_ordens_servico(veiculo.id) is False
 
-    from infrastructure.database.models import OrdemServicoModel
+    from adapters.database.models import OrdemServicoModel
 
     db_session.add(
         OrdemServicoModel(

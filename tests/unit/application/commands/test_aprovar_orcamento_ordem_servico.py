@@ -15,8 +15,8 @@ def _ordem_aguardando_aprovacao_com_item() -> OrdemServico:
     ordem = OrdemServico(veiculo_id="1", descricao="Revisão completa")
     ordem.id = 1
     ordem.iniciar_diagnostico()
-    ordem.enviar_para_aprovacao(orcamento=250.0)
     ordem.adicionar_item("10", 250.0)
+    ordem.enviar_para_aprovacao(orcamento=250.0)
     return ordem
 
 

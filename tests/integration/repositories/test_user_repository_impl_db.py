@@ -1,7 +1,7 @@
 import pytest
 
 from domain.entities.usuario import Usuario
-from infrastructure.database.repositories.user_repository_impl import (
+from adapters.database.repositories.user_repository_impl import (
     UserRepositoryImpl,
 )
 

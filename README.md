@@ -1,126 +1,100 @@
 # API Oficina Mecânica
 
-Projeto de API em Python utilizando FastAPI, DDD e Clean Architecture.
+API em Python (FastAPI) para a gestão de uma oficina mecânica: ordens de serviço, clientes,
+veículos, serviços e peças com controle de estoque. Usa DDD, Clean Architecture e PostgreSQL.
 
-## Banco de dados
+## Objetivos
 
-O sistema utiliza **PostgreSQL** como banco de dados. A escolha se justifica por:
+- **Fase 1 — MVP:** back-end da oficina com JWT, validação de CPF/CNPJ e placa e testes
+  automatizados.
+- **Fase 2 — qualidade, resiliência e escalabilidade:** código sustentável (Clean Code, Clean
+  Architecture/Hexagonal), APIs para a operação e integração com sistemas externos e, em seguida,
+  infraestrutura automatizada (Docker, Kubernetes, Terraform e CI/CD). Andamento em
+  [Estado da Fase 2](#estado-da-fase-2).
 
-- **Modelo relacional com integridade referencial**: o domínio da oficina é
-  fortemente relacional (clientes → veículos → ordens de serviço → serviços,
-  peças e histórico de status), e as foreign keys do PostgreSQL garantem a
-  consistência desses vínculos no próprio banco.
-- **Transações ACID**: operações como baixa de estoque ao registrar peças em
-  uma OS e as transições de status com histórico exigem atomicidade e
-  consistência sob concorrência.
-- **Agregações em SQL**: métricas como o tempo médio de execução por serviço
-  são calculadas no próprio banco (`AVG` sobre as janelas de execução), sem
-  trazer os dados para a aplicação.
-- **Maturidade e ecossistema**: é open source, amplamente adotado, com
-  excelente suporte no SQLAlchemy e imagem oficial leve para Docker
-  (`postgres:16-alpine`), o que simplifica o `docker-compose` da entrega.
+Detalhes: [`docs/fase1-plano-de-acao.md`](docs/fase1-plano-de-acao.md),
+[`docs/fase2-plano-de-acao.md`](docs/fase2-plano-de-acao.md) e
+[`docs/auditoria-conformidade.md`](docs/auditoria-conformidade.md).
 
-## Pré-requisitos
+## Como executar
 
-Para executar a aplicação utilizando Docker, é necessário ter instalado:
-
-- Docker
-- Docker Compose
-
-## Como executar pela primeira vez
-
-Clone o repositório:
+Pré-requisitos: Docker e Docker Compose.
 
 ```bash
 git clone <URL_DO_REPOSITORIO>
-```
-
-Acesse o diretório do projeto:
-
-```bash
 cd api-oficina-mecanica
-```
-
-Configure a chave que assina os tokens JWT — ela é obrigatória e não possui
-valor default (a aplicação não sobe sem ela). Crie um arquivo `.env` a partir
-do exemplo e preencha `JWT_SECRET_KEY` com um valor forte:
-
-```bash
-cp .env.example .env
-# gere um segredo, ex.:
-openssl rand -hex 32
-# e cole o valor em JWT_SECRET_KEY no .env
-```
-
-Suba a aplicação:
-
-```bash
 docker compose up --build
 ```
 
-O Docker Compose será responsável por subir:
+Não é preciso configurar nada: o `docker-compose.yml` já traz credenciais de **desenvolvimento**
+(tabela abaixo). Para trocá-las, copie `.env.example` para `.env` e edite (em produção, gere o
+segredo com `openssl rand -hex 32`).
 
-- API FastAPI
-- PostgreSQL
-- Configurações necessárias para comunicação entre a API e o banco de dados
+- API: <http://localhost:8000> · Swagger: <http://localhost:8000/docs>
+- Logs: `docker compose logs -f api`
+- Parar: `docker compose down` (use `-v` para apagar também os dados do PostgreSQL)
 
-A variável `DATABASE_URL` é configurada automaticamente pelo `docker-compose.yml`.
-As variáveis de autenticação (`JWT_SECRET_KEY`, `JWT_ALGORITHM`,
-`JWT_EXPIRE_MINUTES`) são lidas do `.env` — ver `.env.example`.
+| Variável | Padrão no compose | Para que serve |
+|---|---|---|
+| `JWT_SECRET_KEY` | `segredo-jwt-somente-para-desenvolvimento` | Assina os tokens JWT; a aplicação **não sobe sem ela** |
+| `JWT_ALGORITHM` / `JWT_EXPIRE_MINUTES` | `HS256` / `60` | Algoritmo e validade do token |
+| `INTEGRACAO_API_KEY` | `chave-integracao-somente-para-desenvolvimento` | Cabeçalho `X-API-Key` das rotas `/integracoes` (sem ela, 503) |
+| `SEED_DADOS_EXEMPLO` | `true` | Cria o cliente `nilson@example.com` (senha `senha123`) e um veículo de exemplo |
+| `SQL_ECHO` | `false` | Imprime o SQL executado, para depuração |
 
-## Como construir
+Esses valores servem apenas para desenvolvimento e avaliação. Fora do Docker, exporte
+`JWT_SECRET_KEY` (ou crie o `.env`) antes de iniciar a aplicação.
 
-```bash
-docker compose build
-```
+## Arquitetura
 
-## Como subir
+Clean Architecture / Arquitetura Hexagonal; a dependência sempre aponta para dentro:
 
-```bash
-docker compose up --build
-```
+| Camada | Papel | Pode importar |
+|---|---|---|
+| `domain/` | Entidades, objetos de valor (CPF/CNPJ, placa, status) e contratos dos repositórios | só `domain` |
+| `application/` | Casos de uso e portas de serviços (`application/ports`: hash de senha, JWT, unidade de trabalho) | `domain` |
+| `adapters/` | Implementações das portas: repositórios SQLAlchemy, BCrypt, JWT, configuração, seeders | `domain`, `application` |
+| `presentation/` | API REST (rotas, schemas, conversores) e composição das dependências | `application`, `domain` e, só em `presentation/dependencies`, `adapters` |
 
-A API ficará disponível em:
+A regra é verificada por `tests/unit/test_arquitetura.py`. A abertura de OS com peças e o
+adicionar/remover insumo gravam a OS e a baixa de estoque numa **única transação**.
 
-```text
-http://localhost:8000
-```
+## APIs
 
-A documentação Swagger estará disponível em:
+Documentação interativa em `/docs`. Cadastre-se em `POST /users/register`, faça login em
+`POST /users/login` e envie `Authorization: Bearer <token>`.
 
-```text
-http://localhost:8000/docs
-```
+| Grupo | Rotas | Acesso |
+|---|---|---|
+| Usuários | `POST /users/register`, `POST /users/login` | público |
+| Clientes, veículos, serviços | CRUD em `/clientes`, `/veiculos`, `/servicos` | JWT |
+| Insumos e estoque | CRUD em `/insumos`, `/insumos/estoque-baixo`, `/insumos/{id}/estoque/entrada`, `/saida`, `/ajuste` | JWT |
+| Ordens de serviço | `POST /ordens-servico` (cliente, veículo, serviços e peças em uma chamada), `GET /ordens-servico` (paginada; filtros por status, CPF/CNPJ e placa), `GET /ordens-servico/{id}` | JWT |
+| Ciclo da OS | `POST /ordens-servico/{id}/` + `iniciar-diagnostico`, `enviar-aprovacao`, `aprovar-executar`, `rejeitar-orcamento`, `retornar-diagnostico`, `finalizar`, `entregar`, `adicionar-item`, `remover-item`, `adicionar-insumo`, `remover-insumo` | JWT |
+| Execução e métricas | `POST /ordens-servico/{id}/servicos/{servico_id}/iniciar` e `/finalizar`; `GET /ordens-servico/metricas/tempo-medio-execucao` | JWT |
+| Consulta do cliente | `POST /consulta/ordens-servico` (número da OS + CPF/CNPJ) | público |
+| Integrações externas | `POST /integracoes/ordens-servico/{id}/orcamento` (`aprovado`/`recusado`) e `/status` (ação enviada por uma ferramenta como e-mail) | `X-API-Key` |
+| Saúde | `GET /health` | público |
 
-## Como visualizar os logs
+**Ciclo da OS:** `Recebida` → `Em diagnóstico` → `Aguardando aprovação` → `Em execução` →
+`Finalizada` → `Entregue` (aprovar o orçamento leva a "Em execução"; recusar, a "Finalizada").
+A listagem ordena por prioridade (Em execução, Aguardando aprovação, Em diagnóstico, Recebida), com
+as mais antigas primeiro, e **não lista** as OS Finalizadas e Entregues (exclusão lógica: seguem
+consultáveis pelo detalhe).
 
-Para visualizar os logs de todos os serviços:
+## Banco de dados
 
-```bash
-docker compose logs -f
-```
+**PostgreSQL**, pelos motivos:
 
-Para visualizar apenas os logs do serviço da API:
+- **Modelo relacional com integridade referencial:** clientes → veículos → ordens de serviço →
+  serviços, peças e histórico de status; as foreign keys garantem a consistência no próprio banco.
+- **Transações ACID:** baixa de estoque ao registrar peças em uma OS e transições de status com
+  histórico exigem atomicidade e consistência sob concorrência.
+- **Agregações em SQL:** métricas como o tempo médio de execução por serviço são calculadas no banco.
+- **Maturidade e ecossistema:** open source, bom suporte no SQLAlchemy e imagem oficial leve
+  (`postgres:16-alpine`) para o Docker Compose.
 
-```bash
-docker compose logs -f api
-```
-
-## Como parar
-
-```bash
-docker compose down
-```
-
-Para remover também os volumes, incluindo os dados persistidos do PostgreSQL:
-
-```bash
-docker compose down -v
-```
-
-> Atenção: o comando acima remove os dados armazenados no banco PostgreSQL local.
-
-## Provisionamento da infraestrutura com Terraform
+## Infraestrutura (Terraform)
 
 Os scripts em [`infra/`](infra/README.md) provisionam o cluster Kubernetes e o banco de dados em
 dois ambientes, selecionados pelo `APP_ENV`:
@@ -135,47 +109,40 @@ terraform plan
 terraform apply
 ```
 
-Recursos criados, pré-requisitos, outputs e a integração com os manifests em `/k8s` estão
-documentados em [`infra/README.md`](infra/README.md).
+Recursos criados, variáveis, outputs e a integração com os manifests em `/k8s`:
+[`infra/README.md`](infra/README.md).
 
-## Como executar os testes
-
-```bash
-uv run pytest
-```
-
-> Se não estiver usando um ambiente Docker, certifique-se de ter as dependências instaladas via `uv sync`.
-
-Os testes ficam em `tests/`, organizados em:
-
-- `tests/unit/` — testes unitários (entidades, value objects, casos de uso da
-  camada `application`, e implementações de infraestrutura testadas com
-  dublês). Não tocam banco de dados nem rede.
-- `tests/integration/` — testes de integração. Sobem um SQLite em memória
-  com o schema real (`infrastructure/database/models.py`) e exercitam:
-  - `tests/integration/repositories/`: os repositórios SQLAlchemy fazendo
-    SQL de verdade;
-  - `tests/integration/api/`: as rotas FastAPI reais, ponta a ponta
-    (rota → caso de uso → repositório → banco), usando `TestClient` com a
-    dependência `get_db` substituída pela sessão de teste.
-
-## Como ver o relatório de cobertura
+## Testes e cobertura
 
 ```bash
-uv run pytest --cov --cov-report=term-missing
+uv sync                                   # instala as dependências (fora do Docker)
+uv run pytest                             # roda a suíte
+uv run pytest --cov --cov-report=term-missing   # com cobertura (use html para um relatório navegável)
 ```
 
-Para um relatório navegável em HTML:
+- `tests/unit/`: entidades, objetos de valor, casos de uso e adaptadores, sem banco nem rede.
+- `tests/integration/`: SQLite em memória com o schema real; repositórios (`repositories/`) e rotas
+  ponta a ponta com `TestClient` (`api/`).
 
-```bash
-uv run pytest --cov --cov-report=html
-open htmlcov/index.html
-```
+São 704 testes, com 99% de cobertura nos quatro pacotes (mínimo exigido: 80% nos domínios críticos).
+A configuração está em `pyproject.toml`; ficam de fora só `main.py` e as interfaces abstratas
+`domain/repositories/*`.
 
-A configuração de cobertura está em `pyproject.toml`
-(`[tool.coverage.run]` / `[tool.coverage.report]`). Ela cobre os pacotes de
-domínio, aplicação, infraestrutura e apresentação, e deixa de fora scripts
-de linha de comando (`main.py`, `seed.py`, `create_schema.py`,
-`reset_marcas.py`, `consulta_ordem_servico.py`, seeders) e as interfaces
-abstratas de repositório (`domain/repositories/*`), que não têm lógica
-própria — a suíte mantém a cobertura acima de 80% nos domínios críticos.
+## Estado da Fase 2
+
+| Item do enunciado | Situação |
+|---|---|
+| Clean Code, Clean Architecture/Hexagonal e testes automatizados | Concluído |
+| APIs: abertura de OS, consulta de status, aprovação de orçamento externa, listagem ordenada com exclusão lógica e atualização de status por ferramenta externa | Concluído |
+| Dockerfile e docker-compose revisados | Em andamento (funcionam em desenvolvimento) |
+| Terraform (`/infra`): cluster Kubernetes e banco de dados | Concluído (`dev` aplicado e testado; `prd` validado, sem `apply`) |
+| Manifestos Kubernetes (`/k8s`) e pipeline de CI/CD | Pendente |
+| Collection das APIs, desenho da infraestrutura e vídeo | Pendente |
+
+## Limitações conhecidas
+
+- **Cadastro de usuários aberto:** `POST /users/register` é público e não há perfis; todo usuário
+  cadastrado recebe um JWT válido para as rotas administrativas. Mantido por simplicidade (trabalho
+  acadêmico); um ambiente real exigiria restringir o cadastro ou separar perfis.
+- **Itens em execução:** com a OS "Em execução" ainda é possível acrescentar serviços e peças, e o
+  total pode divergir do orçamento aprovado (não há novo ciclo de aprovação para os adicionais).

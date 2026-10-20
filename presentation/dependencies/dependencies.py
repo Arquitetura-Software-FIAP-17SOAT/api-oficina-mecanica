@@ -1,5 +1,6 @@
 from fastapi import Depends
 
+from application.ports.token_decoder import TokenDecoder
 from application.commands.login_user import LoginUserUseCase
 from application.commands.register_user import RegisterUserUseCase
 from application.commands.criar_ordem_servico import CriarOrdemServicoUseCase
@@ -50,26 +51,38 @@ from application.queries.list_ordens_servico import ListOrdensServicoUseCase
 from application.queries.list_tempo_medio_execucao import (
     ListTempoMedioExecucaoUseCase,
 )
-from infrastructure.auth.password_hasher import BCryptPasswordHasher
-from infrastructure.database.database import get_db
-from infrastructure.database.repositories.cliente_repository_impl import (
+from adapters.auth.jwt_token_decoder import JWTTokenDecoder
+from adapters.auth.jwt_token_generator import JWTTokenGenerator
+from adapters.auth.password_hasher import BCryptPasswordHasher
+from adapters.database.database import get_db
+from adapters.database.transaction import SqlAlchemyUnitOfWork
+from adapters.database.repositories.cliente_repository_impl import (
     ClienteRepositoryImpl,
 )
-from infrastructure.database.repositories.insumo_repository_impl import (
+from adapters.database.repositories.execucao_servico_repository_impl import (
+    ExecucaoServicoRepositoryImpl,
+)
+from adapters.database.repositories.insumo_repository_impl import (
     InsumoRepositoryImpl,
 )
-from infrastructure.database.repositories.servico_repository_impl import (
+from adapters.database.repositories.servico_repository_impl import (
     ServicoRepositoryImpl,
 )
-from infrastructure.database.repositories.user_repository_impl import (
+from adapters.database.repositories.user_repository_impl import (
     UserRepositoryImpl,
 )
-from infrastructure.database.repositories.veiculo_repository_impl import (
+from adapters.database.repositories.veiculo_repository_impl import (
     VeiculoRepositoryImpl,
 )
-from infrastructure.database.repositories.ordem_servico_repository_impl import (
+from adapters.database.repositories.ordem_servico_repository_impl import (
     OrdemServicoRepositoryImpl,
 )
+
+
+def get_token_decoder() -> TokenDecoder:
+    """Fornece o validador de tokens de acesso usado pela autenticação."""
+
+    return JWTTokenDecoder()
 
 
 def get_register_user_use_case(
@@ -97,6 +110,7 @@ def get_login_user_use_case(
     return LoginUserUseCase(
         user_repository=repository,
         password_hasher=password_hasher,
+        token_generator=JWTTokenGenerator(),
     )
 
 
@@ -109,7 +123,10 @@ def get_criar_ordem_servico_use_case(
     
     return CriarOrdemServicoUseCase(
         ordem_servico_repository=repository,
-        db=db,
+        veiculo_repository=VeiculoRepositoryImpl(db),
+        servico_repository=ServicoRepositoryImpl(db),
+        insumo_repository=InsumoRepositoryImpl(db),
+        unit_of_work=SqlAlchemyUnitOfWork(db),
     )
 
 
@@ -142,6 +159,7 @@ def get_adicionar_insumo_ordem_servico_use_case(
     return AdicionarInsumoOrdemServicoUseCase(
         ordem_servico_repository=OrdemServicoRepositoryImpl(db),
         insumo_repository=InsumoRepositoryImpl(db),
+        unit_of_work=SqlAlchemyUnitOfWork(db),
     )
 
 
@@ -153,6 +171,7 @@ def get_remover_insumo_ordem_servico_use_case(
     return RemoverInsumoOrdemServicoUseCase(
         ordem_servico_repository=OrdemServicoRepositoryImpl(db),
         insumo_repository=InsumoRepositoryImpl(db),
+        unit_of_work=SqlAlchemyUnitOfWork(db),
     )
 
 
@@ -275,7 +294,9 @@ def get_iniciar_execucao_servico_use_case(
 ) -> IniciarExecucaoServicoUseCase:
     """Factory para injeção de dependências do caso de uso de início de execução de serviço."""
 
-    return IniciarExecucaoServicoUseCase(db=db)
+    return IniciarExecucaoServicoUseCase(
+        execucao_repository=ExecucaoServicoRepositoryImpl(db),
+    )
 
 
 def get_finalizar_execucao_servico_use_case(
@@ -283,4 +304,6 @@ def get_finalizar_execucao_servico_use_case(
 ) -> FinalizarExecucaoServicoUseCase:
     """Factory para injeção de dependências do caso de uso de fim de execução de serviço."""
 
-    return FinalizarExecucaoServicoUseCase(db=db)
+    return FinalizarExecucaoServicoUseCase(
+        execucao_repository=ExecucaoServicoRepositoryImpl(db),
+    )

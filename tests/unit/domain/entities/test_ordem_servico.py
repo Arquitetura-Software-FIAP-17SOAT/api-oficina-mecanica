@@ -299,7 +299,8 @@ class TestTransicaoDeStatus:
         ordem_servico.iniciar_diagnostico()
         assert ordem_servico.status == StatusOrdemServico.EM_DIAGNOSTICO
 
-        # Passa para AGUARDANDO_APROVACAO
+        # Passa para AGUARDANDO_APROVACAO (os itens entram antes do envio)
+        ordem_servico.adicionar_item("servico-1", 500.00)
         ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
         assert ordem_servico.status == StatusOrdemServico.AGUARDANDO_APROVACAO
         assert ordem_servico.orcamento == 1000.00
@@ -312,8 +313,7 @@ class TestTransicaoDeStatus:
         ordem_servico.enviar_para_aprovacao(orcamento=950.00)
         assert ordem_servico.status == StatusOrdemServico.AGUARDANDO_APROVACAO
 
-        # Aprova e inicia execução (com itens)
-        ordem_servico.adicionar_item("servico-1", 500.00)
+        # Aprova e inicia execução
         ordem_servico.aprovar_e_iniciar_execucao()
         assert ordem_servico.status == StatusOrdemServico.EM_EXECUCAO
 
@@ -405,8 +405,8 @@ class TestTransicaoDeStatus:
     def test_finalizar_com_observacoes(self, ordem_servico):
         """Deve atualizar as observações ao finalizar"""
         ordem_servico.iniciar_diagnostico()
-        ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
         ordem_servico.adicionar_item("servico-1", 500.00)
+        ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
         ordem_servico.aprovar_e_iniciar_execucao()
 
         ordem_servico.finalizar("Tudo concluído")
@@ -416,8 +416,8 @@ class TestTransicaoDeStatus:
     def test_entregar_com_observacoes(self, ordem_servico):
         """Deve atualizar as observações ao entregar"""
         ordem_servico.iniciar_diagnostico()
-        ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
         ordem_servico.adicionar_item("servico-1", 500.00)
+        ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
         ordem_servico.aprovar_e_iniciar_execucao()
         ordem_servico.finalizar()
 
@@ -437,8 +437,8 @@ class TestTransicaoDeStatus:
     ):
         """Não deve permitir retornar para recebida a partir de estado final"""
         ordem_servico.iniciar_diagnostico()
-        ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
         ordem_servico.adicionar_item("servico-1", 500.00)
+        ordem_servico.enviar_para_aprovacao(orcamento=1000.00)
         ordem_servico.aprovar_e_iniciar_execucao()
 
         with pytest.raises(ValueError, match="Não é possível retornar"):
@@ -465,10 +465,9 @@ class TestComportamentosOrdemServico:
         assert not ordem_servico.pode_ser_finalizada()
 
         # Não pode ser finalizada sem itens mesmo em EM_EXECUCAO
-        ordem_servico.enviar_para_aprovacao(1000.00)
-        
-        # Precisamos adicionar item antes de aprovar
+        # Os itens precisam existir antes do envio para aprovação
         ordem_servico.adicionar_item("servico-1", 500.00)
+        ordem_servico.enviar_para_aprovacao(1000.00)
         ordem_servico.aprovar_e_iniciar_execucao()
         
         # Agora pode ser finalizada
@@ -625,3 +624,40 @@ class TestOrcamentoAutomatico:
 
         assert resumo["orcamento_calculado"] == 200.00
         assert resumo["orcamento"] is None
+
+
+class TestTravaDeEdicaoAguardandoAprovacao:
+    """Com o orçamento já enviado ao cliente, os itens não podem mais mudar."""
+
+    @pytest.fixture
+    def ordem_aguardando(self):
+        ordem = OrdemServico(veiculo_id="veiculo-123", descricao="Manutenção")
+        ordem.adicionar_item("servico-1", 100.00)
+        ordem.iniciar_diagnostico()
+        ordem.enviar_para_aprovacao()
+        return ordem
+
+    def test_falhar_ao_adicionar_item(self, ordem_aguardando):
+        with pytest.raises(ValueError, match="aguardando aprovação"):
+            ordem_aguardando.adicionar_item("servico-2", 50.00)
+
+    def test_falhar_ao_remover_item(self, ordem_aguardando):
+        with pytest.raises(ValueError, match="aguardando aprovação"):
+            ordem_aguardando.remover_item("servico-1")
+
+    def test_falhar_ao_adicionar_insumo(self, ordem_aguardando):
+        with pytest.raises(ValueError, match="aguardando aprovação"):
+            ordem_aguardando.adicionar_insumo("insumo-1", 10.00)
+
+    def test_orcamento_enviado_continua_igual_ao_calculado(self, ordem_aguardando):
+        with pytest.raises(ValueError):
+            ordem_aguardando.adicionar_item("servico-2", 50.00)
+
+        assert ordem_aguardando.orcamento == ordem_aguardando.orcamento_calculado
+
+    def test_apos_retornar_ao_diagnostico_volta_a_aceitar_itens(self, ordem_aguardando):
+        ordem_aguardando.retornar_para_diagnostico()
+
+        ordem_aguardando.adicionar_item("servico-2", 50.00)
+
+        assert len(ordem_aguardando.itens) == 2

@@ -11,8 +11,8 @@ from application.queries.list_insumos import ListInsumosUseCase
 from application.queries.list_insumos_estoque_baixo import (
     ListInsumosEstoqueBaixoUseCase,
 )
-from infrastructure.database.database import get_db
-from infrastructure.database.repositories.insumo_repository_impl import (
+from adapters.database.database import get_db
+from adapters.database.repositories.insumo_repository_impl import (
     InsumoRepositoryImpl,
 )
 

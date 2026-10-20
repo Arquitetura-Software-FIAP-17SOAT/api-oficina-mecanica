@@ -8,10 +8,15 @@ from application.commands.remover_insumo_ordem_servico import (
 )
 from domain.entities.insumo import Insumo
 from domain.entities.ordem_servico import OrdemServico
+from tests.unit.fakes import UnitOfWorkFalso
 
 
 def _use_case(**overrides):
-    repos = dict(ordem_servico_repository=AsyncMock(), insumo_repository=AsyncMock())
+    repos = dict(
+        ordem_servico_repository=AsyncMock(),
+        insumo_repository=AsyncMock(),
+        unit_of_work=UnitOfWorkFalso(),
+    )
     repos.update(overrides)
     return RemoverInsumoOrdemServicoUseCase(**repos), repos
 
@@ -88,3 +93,22 @@ async def test_nao_falha_quando_insumo_foi_excluido_do_catalogo():
 
     assert resultado.insumos_utilizados == []
     repos["insumo_repository"].update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_desfaz_a_transacao_quando_a_gravacao_da_os_falha():
+    ordem = _ordem_com_insumo()
+    use_case, repos = _use_case()
+    repos["ordem_servico_repository"].find_by_id.return_value = ordem
+    repos["ordem_servico_repository"].save.side_effect = RuntimeError("banco caiu")
+    repos["insumo_repository"].find_by_id.return_value = Insumo(
+        id=10, nome="Filtro", preco_unitario="30.00", estoque=1
+    )
+
+    with pytest.raises(RuntimeError):
+        await use_case.execute(
+            RemoverInsumoOrdemServicoCommand(ordem_servico_id=1, insumo_id=10)
+        )
+
+    assert repos["unit_of_work"].confirmada == 0
+    assert repos["unit_of_work"].desfeita == 1

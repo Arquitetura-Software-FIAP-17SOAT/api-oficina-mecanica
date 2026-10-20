@@ -1,5 +1,6 @@
 from tests.integration.conftest import (
     criar_cliente,
+    criar_insumo,
     criar_marca,
     criar_servico,
     criar_usuario,
@@ -22,7 +23,7 @@ def test_fluxo_completo_da_ordem_de_servico(client, db_session, auth_headers):
 
     resposta_create = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     )
     assert resposta_create.status_code == 201
     ordem = resposta_create.json()
@@ -45,13 +46,6 @@ def test_fluxo_completo_da_ordem_de_servico(client, db_session, auth_headers):
     )
     assert resposta_diagnostico.status_code == 200
     assert resposta_diagnostico.json()["status"] == "Em diagnóstico"
-
-    resposta_aprovacao = client.post(
-        f"/ordens-servico/{ordem_id}/enviar-aprovacao",
-        json={"orcamento": 200.0, "observacoes": "Aguardando cliente"},
-    )
-    assert resposta_aprovacao.status_code == 200
-    assert resposta_aprovacao.json()["status"] == "Aguardando aprovação"
 
     resposta_item = client.post(
         f"/ordens-servico/{ordem_id}/adicionar-item",
@@ -80,6 +74,13 @@ def test_fluxo_completo_da_ordem_de_servico(client, db_session, auth_headers):
     assert item["quantidade"] == 2
     assert item["valor_total"] == item["valor_unitario"] * 2
 
+    resposta_aprovacao = client.post(
+        f"/ordens-servico/{ordem_id}/enviar-aprovacao",
+        json={"orcamento": 200.0, "observacoes": "Aguardando cliente"},
+    )
+    assert resposta_aprovacao.status_code == 200
+    assert resposta_aprovacao.json()["status"] == "Aguardando aprovação"
+
     resposta_aprovar = client.post(f"/ordens-servico/{ordem_id}/aprovar-executar")
     assert resposta_aprovar.status_code == 200
     assert resposta_aprovar.json()["status"] == "Em execução"
@@ -103,7 +104,7 @@ def test_retornar_para_diagnostico(client, db_session):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
@@ -126,7 +127,7 @@ def test_rejeitar_orcamento_finaliza_ordem(client, db_session, auth_headers):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
     client.post(
@@ -147,10 +148,23 @@ def test_criar_ordem_falha_quando_veiculo_nao_existe(client, db_session):
 
     response = client.post(
         "/ordens-servico",
-        json={"veiculo_id": "999", "descricao": "Revisão completa"},
+        json={"veiculo_id": "999", "cliente_id": 1, "descricao": "Revisão completa"},
     )
 
     assert response.status_code == 404
+
+
+def test_criar_ordem_exige_cliente_id(client, db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+
+    response = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+    )
+
+    assert response.status_code == 422
+    assert "cliente_id" in str(response.json()["detail"])
 
 
 def test_obter_ordem_inexistente_retorna_404(client, db_session, auth_headers):
@@ -169,7 +183,7 @@ def test_obter_ordem_sem_autenticacao_retorna_401(
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     response = unauthenticated_client.get(f"/ordens-servico/{ordem_id}")
@@ -191,7 +205,7 @@ def test_criar_ordem_sem_autenticacao_retorna_401(unauthenticated_client, db_ses
 
     response = unauthenticated_client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     )
 
     assert response.status_code == 401
@@ -203,7 +217,7 @@ def test_transicao_invalida_retorna_400(client, db_session):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     # Não é possível aprovar direto sem passar por diagnóstico/aprovação
@@ -218,7 +232,7 @@ def test_adicionar_item_falha_quando_servico_nao_existe(client, db_session):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     response = client.post(
@@ -236,7 +250,7 @@ def test_listar_ordens_de_servico_com_paginacao(client, db_session, auth_headers
     for _ in range(3):
         client.post(
             "/ordens-servico",
-            json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+            json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
         )
 
     resposta = client.get(
@@ -265,11 +279,11 @@ def test_listar_ordens_de_servico_filtrando_por_status(
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
     client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Troca de pneus"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Troca de pneus"},
     )
 
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
@@ -300,11 +314,11 @@ def test_listar_ordens_de_servico_filtrando_por_placa_e_cpf_cnpj(
 
     ordem_alvo = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo_alvo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo_alvo.id), "cliente_id": veiculo_alvo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
     client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(outro_veiculo.id), "descricao": "Troca de pneus"},
+        json={"veiculo_id": str(outro_veiculo.id), "cliente_id": outro_veiculo.cliente_id, "descricao": "Troca de pneus"},
     )
 
     resposta_placa = client.get(
@@ -385,7 +399,7 @@ def test_enviar_aprovacao_gera_orcamento_automaticamente(
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
@@ -413,7 +427,7 @@ def test_enviar_aprovacao_com_orcamento_manual_prevalece(client, db_session):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
@@ -437,7 +451,7 @@ def test_enviar_aprovacao_sem_itens_retorna_400(client, db_session):
 
     ordem_id = client.post(
         "/ordens-servico",
-        json={"veiculo_id": str(veiculo.id), "descricao": "Revisão completa"},
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
     ).json()["id"]
 
     client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
@@ -446,3 +460,72 @@ def test_enviar_aprovacao_sem_itens_retorna_400(client, db_session):
 
     assert resposta.status_code == 400
     assert "não possui serviços adicionados" in resposta.json()["detail"]
+
+
+def _ordem_aguardando_aprovacao(client, db_session):
+    seed_status_ordem_servico(db_session)
+    veiculo = _criar_veiculo(db_session)
+    servico = criar_servico(db_session)
+    ordem_id = client.post(
+        "/ordens-servico",
+        json={"veiculo_id": str(veiculo.id), "cliente_id": veiculo.cliente_id, "descricao": "Revisão completa"},
+    ).json()["id"]
+    client.post(f"/ordens-servico/{ordem_id}/iniciar-diagnostico", json={})
+    client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(servico.id), "quantidade": 1},
+    )
+    client.post(f"/ordens-servico/{ordem_id}/enviar-aprovacao", json={})
+    return ordem_id, servico
+
+
+def test_nao_altera_servicos_com_o_orcamento_aguardando_aprovacao(client, db_session):
+    ordem_id, servico = _ordem_aguardando_aprovacao(client, db_session)
+    outro = criar_servico(db_session, nome="Alinhamento")
+    orcamento = client.get(f"/ordens-servico/{ordem_id}").json()["orcamento"]
+
+    adicionar = client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(outro.id), "quantidade": 1},
+    )
+    remover = client.post(
+        f"/ordens-servico/{ordem_id}/remover-item",
+        json={"servico_id": str(servico.id)},
+    )
+
+    assert adicionar.status_code == 400
+    assert "aguardando aprovação" in adicionar.json()["detail"]
+    assert remover.status_code == 400
+    detalhe = client.get(f"/ordens-servico/{ordem_id}").json()
+    assert len(detalhe["itens"]) == 1
+    assert detalhe["orcamento"] == orcamento
+
+
+def test_nao_adiciona_insumo_com_o_orcamento_aguardando_e_nao_baixa_estoque(
+    client, db_session
+):
+    ordem_id, _ = _ordem_aguardando_aprovacao(client, db_session)
+    insumo = criar_insumo(db_session, estoque=10)
+
+    resposta = client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-insumo",
+        json={"insumo_id": insumo.id, "quantidade": 3},
+    )
+
+    assert resposta.status_code == 400
+    assert client.get(f"/insumos/{insumo.id}").json()["estoque"] == 10
+
+
+def test_voltando_ao_diagnostico_os_itens_podem_ser_alterados_de_novo(
+    client, db_session
+):
+    ordem_id, _ = _ordem_aguardando_aprovacao(client, db_session)
+    outro = criar_servico(db_session, nome="Alinhamento")
+
+    client.post(f"/ordens-servico/{ordem_id}/retornar-diagnostico", json={})
+    resposta = client.post(
+        f"/ordens-servico/{ordem_id}/adicionar-item",
+        json={"servico_id": str(outro.id), "quantidade": 1},
+    )
+
+    assert resposta.status_code == 200
