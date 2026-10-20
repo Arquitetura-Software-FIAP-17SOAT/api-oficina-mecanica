@@ -40,14 +40,3 @@ resource "aws_ecr_repository" "api" {
     scan_on_push = true
   }
 }
-
-module "k8s_base" {
-  source = "../../modulos/k8s-base"
-
-  namespace   = var.namespace
-  environment = var.environment
-  databaseUrl = module.database.databaseUrl
-
-  # O acesso ao cluster só existe depois do access entry e da policy association
-  depends_on = [module.cluster]
-}

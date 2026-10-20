@@ -14,27 +14,18 @@ output "kubeconfig" {
   sensitive   = true
 }
 
-output "namespace" {
-  description = "Namespace da aplicação"
-  value       = module.k8s_base.namespace
-}
-
 output "databaseHost" {
   description = "Host do Postgres dentro do cluster"
   value       = module.database.host
 }
 
-output "databaseSecretName" {
-  description = "Secret com a DATABASE_URL para o Deployment da API"
-  value       = module.k8s_base.databaseSecretName
+output "databaseUrl" {
+  description = "DATABASE_URL da API (terraform output -raw databaseUrl)"
+  value       = module.database.databaseUrl
+  sensitive   = true
 }
 
 output "apiUrl" {
-  description = "URL da API no localhost (requer Service NodePort na porta apiNodePort)"
+  description = "URL no localhost encaminhada para o NodePort apiNodePort do cluster"
   value       = "http://localhost:${var.apiHostPort}"
-}
-
-output "loadImageCommand" {
-  description = "Comando para carregar a imagem da API no cluster"
-  value       = "kind load docker-image <imagem>:<tag> --name ${module.cluster.clusterName}"
 }

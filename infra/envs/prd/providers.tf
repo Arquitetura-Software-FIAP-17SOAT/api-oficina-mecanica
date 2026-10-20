@@ -6,14 +6,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.36"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 3.0"
-    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.7"
@@ -33,29 +25,5 @@ provider "aws" {
 
   default_tags {
     tags = local.tags
-  }
-}
-
-provider "kubernetes" {
-  host                   = module.cluster.endpoint
-  cluster_ca_certificate = base64decode(module.cluster.clusterCaCertificate)
-
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    args        = ["eks", "get-token", "--cluster-name", module.cluster.clusterName, "--region", var.regionDefault]
-  }
-}
-
-provider "helm" {
-  kubernetes = {
-    host                   = module.cluster.endpoint
-    cluster_ca_certificate = base64decode(module.cluster.clusterCaCertificate)
-
-    exec = {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      args        = ["eks", "get-token", "--cluster-name", module.cluster.clusterName, "--region", var.regionDefault]
-    }
   }
 }

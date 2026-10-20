@@ -1,7 +1,13 @@
+resource "kubernetes_namespace_v1" "this" {
+  metadata {
+    name = var.namespace
+  }
+}
+
 resource "kubernetes_secret_v1" "credentials" {
   metadata {
     name      = "${var.name}-credentials"
-    namespace = var.namespace
+    namespace = kubernetes_namespace_v1.this.metadata[0].name
   }
 
   data = {
@@ -14,7 +20,7 @@ resource "kubernetes_secret_v1" "credentials" {
 resource "kubernetes_service_v1" "this" {
   metadata {
     name      = var.name
-    namespace = var.namespace
+    namespace = kubernetes_namespace_v1.this.metadata[0].name
     labels    = local.labels
   }
 
@@ -32,7 +38,7 @@ resource "kubernetes_service_v1" "this" {
 resource "kubernetes_stateful_set_v1" "this" {
   metadata {
     name      = var.name
-    namespace = var.namespace
+    namespace = kubernetes_namespace_v1.this.metadata[0].name
     labels    = local.labels
   }
 

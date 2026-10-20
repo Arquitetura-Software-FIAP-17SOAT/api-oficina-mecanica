@@ -33,12 +33,6 @@ variable "roleName" {
   default     = "voclabs"
 }
 
-variable "namespace" {
-  description = "Namespace da aplicação"
-  type        = string
-  default     = "oficina"
-}
-
 variable "instanceTypes" {
   description = "Tipos de instância do node group"
   type        = list(string)

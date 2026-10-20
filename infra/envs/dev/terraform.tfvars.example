@@ -1,6 +1,6 @@
 # Copie para terraform.tfvars e ajuste se necessário. Todos os valores têm default.
-projectName = "oficina"
-namespace   = "oficina"
-workerNodes = 1
-apiNodePort = 30080
-apiHostPort = 8080
+projectName       = "oficina"
+databaseNamespace = "database"
+workerNodes       = 1
+apiNodePort       = 30080
+apiHostPort       = 8080

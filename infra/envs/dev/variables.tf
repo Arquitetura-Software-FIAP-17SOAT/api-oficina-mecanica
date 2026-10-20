@@ -15,10 +15,10 @@ variable "environment" {
   }
 }
 
-variable "namespace" {
-  description = "Namespace da aplicação"
+variable "databaseNamespace" {
+  description = "Namespace do Postgres no cluster"
   type        = string
-  default     = "oficina"
+  default     = "database"
 }
 
 variable "workerNodes" {

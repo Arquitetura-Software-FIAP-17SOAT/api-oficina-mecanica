@@ -18,19 +18,15 @@ output "kubeconfigCommand" {
   value       = "aws eks update-kubeconfig --name ${module.cluster.clusterName} --region ${var.regionDefault}"
 }
 
-output "namespace" {
-  description = "Namespace da aplicação"
-  value       = module.k8s_base.namespace
-}
-
 output "databaseHost" {
   description = "Endpoint do RDS"
   value       = module.database.host
 }
 
-output "databaseSecretName" {
-  description = "Secret com a DATABASE_URL para o Deployment da API"
-  value       = module.k8s_base.databaseSecretName
+output "databaseUrl" {
+  description = "DATABASE_URL da API (terraform output -raw databaseUrl)"
+  value       = module.database.databaseUrl
+  sensitive   = true
 }
 
 output "ecrRepositoryUrl" {

@@ -135,7 +135,7 @@ terraform plan
 terraform apply
 ```
 
-Recursos criados, pré-requisitos, outputs e o contrato com os manifests em `/k8s` estão
+Recursos criados, pré-requisitos, outputs e a integração com os manifests em `/k8s` estão
 documentados em [`infra/README.md`](infra/README.md).
 
 ## Como executar os testes

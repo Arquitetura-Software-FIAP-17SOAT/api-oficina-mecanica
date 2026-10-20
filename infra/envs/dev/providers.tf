@@ -10,10 +10,6 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.36"
     }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 3.0"
-    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.7"
@@ -28,18 +24,10 @@ terraform {
 
 provider "kind" {}
 
+# Usado só pelo Postgres do dev, que roda dentro do próprio cluster
 provider "kubernetes" {
   host                   = module.cluster.endpoint
   cluster_ca_certificate = module.cluster.clusterCaCertificate
   client_certificate     = module.cluster.clientCertificate
   client_key             = module.cluster.clientKey
-}
-
-provider "helm" {
-  kubernetes = {
-    host                   = module.cluster.endpoint
-    cluster_ca_certificate = module.cluster.clusterCaCertificate
-    client_certificate     = module.cluster.clientCertificate
-    client_key             = module.cluster.clientKey
-  }
 }

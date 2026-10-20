@@ -1,5 +1,5 @@
 variable "namespace" {
-  description = "Namespace onde o Postgres roda"
+  description = "Namespace do Postgres, criado pelo módulo"
   type        = string
 }
 

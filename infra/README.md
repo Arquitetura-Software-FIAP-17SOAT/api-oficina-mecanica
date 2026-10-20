@@ -1,8 +1,9 @@
 # Infraestrutura como Código (Terraform)
 
 Scripts Terraform que provisionam o **cluster Kubernetes** e o **banco de dados** da API Oficina
-Mecânica. Os manifests da aplicação (Deployment, Service, HPA, ConfigMap) ficam em `/k8s`; este
-diretório entrega o cluster pronto para recebê-los.
+Mecânica. Tudo o que roda dentro do cluster para a aplicação (namespace, Deployment, Service, HPA,
+Secrets, metrics-server) fica nos manifests em `/k8s`. Este diretório entrega o cluster vazio e o
+banco pronto.
 
 Existem dois ambientes, selecionados pelo `APP_ENV`:
 
@@ -17,15 +18,12 @@ fica em `modulos/`.
 ```mermaid
 flowchart LR
     subgraph dev["APP_ENV=dev (máquina local)"]
-        kind["kind cluster"] --> pgk["StatefulSet postgres:16-alpine"]
+        kind["kind cluster"] --> pgk["StatefulSet postgres:16-alpine<br/>(namespace database)"]
     end
     subgraph prd["APP_ENV=prd (AWS us-east-1)"]
         eks["EKS + node group"] --> rds["RDS PostgreSQL 16"]
-        ecr["ECR (imagem da API)"] --> eks
+        ecr["ECR (imagem da API)"]
     end
-    base["modulos/k8s-base<br/>namespace + metrics-server + Secret DATABASE_URL"]
-    base -.aplicado em.-> kind
-    base -.aplicado em.-> eks
 ```
 
 ## Estrutura
@@ -35,15 +33,16 @@ infra/
 ├── modulos/
 │   ├── cluster-kind/    # cluster local (provider tehcyx/kind)
 │   ├── cluster-eks/     # EKS, node group, access entry e security group
-│   ├── database-k8s/    # Postgres em StatefulSet + Service + volume persistente
-│   ├── database-rds/    # RDS PostgreSQL, subnet group e security group
-│   └── k8s-base/        # namespace, metrics-server (HPA) e Secret com a DATABASE_URL
+│   ├── database-k8s/    # Postgres em StatefulSet + Service + volume persistente, em namespace próprio
+│   └── database-rds/    # RDS PostgreSQL, subnet group e security group
 └── envs/
-    ├── dev/             # APP_ENV=dev → kind + database-k8s + k8s-base
-    └── prd/             # APP_ENV=prd → cluster-eks + database-rds + ECR + k8s-base
+    ├── dev/             # APP_ENV=dev → cluster-kind + database-k8s
+    └── prd/             # APP_ENV=prd → cluster-eks + database-rds + ECR
 ```
 
-Cada módulo segue a estrutura `main.tf` / `variables.tf` / `outputs.tf`.
+Cada módulo segue a estrutura `main.tf` / `variables.tf` / `outputs.tf`. Os dois ambientes têm o
+mesmo formato (`module "cluster"` e `module "database"`), e os módulos de banco expõem os mesmos
+outputs (`host`, `port`, `databaseUrl`).
 
 ## Recursos criados
 
@@ -52,11 +51,9 @@ Cada módulo segue a estrutura `main.tf` / `variables.tf` / `outputs.tf`.
 | Recurso | Descrição |
 |---|---|
 | `kind_cluster` | Cluster `oficina-dev` com 1 control-plane e 1 worker. O NodePort `30080` é publicado em `localhost:8080` |
-| `kubernetes_namespace_v1` | Namespace `oficina` |
-| `helm_release` metrics-server | Métricas de CPU/memória para o HPA (com `--kubelet-insecure-tls`, exigido pelo kind) |
-| `kubernetes_stateful_set_v1` + `kubernetes_service_v1` | Postgres 16 acessível em `postgres.oficina.svc.cluster.local:5432`, com volume de 1Gi |
+| `kubernetes_namespace_v1` | Namespace `database`, exclusivo do banco |
+| `kubernetes_stateful_set_v1` + `kubernetes_service_v1` | Postgres 16 acessível em `postgres.database.svc.cluster.local:5432`, com volume de 1Gi |
 | `kubernetes_secret_v1` `postgres-credentials` | Usuário, senha e nome do banco usados pelo Postgres |
-| `kubernetes_secret_v1` `oficina-db` | `DATABASE_URL` para a API |
 | `random_password` | Senha do banco, gerada pelo Terraform (não fica no repositório) |
 
 ### `prd`
@@ -70,7 +67,6 @@ Cada módulo segue a estrutura `main.tf` / `variables.tf` / `outputs.tf`.
 | `aws_db_instance` | RDS PostgreSQL 16, `db.t3.micro`, 20 GB gp3, criptografado e sem acesso público |
 | `aws_db_subnet_group` + `aws_security_group` `SG-oficina-prd-db` | Porta 5432 liberada apenas para o security group dos nós do EKS |
 | `aws_ecr_repository` | Repositório `oficina-prd-api` para a imagem da API |
-| `kubernetes_namespace_v1`, metrics-server, Secret `oficina-db` | Os mesmos do `dev`, via `modulos/k8s-base` |
 | `random_password` | Senha do RDS |
 
 ## Pré-requisitos
@@ -79,9 +75,8 @@ Cada módulo segue a estrutura `main.tf` / `variables.tf` / `outputs.tf`.
 |---|---|---|
 | Terraform >= 1.10 | ✔ | ✔ |
 | Docker em execução | ✔ | — |
-| kubectl | ✔ | ✔ |
-| kind CLI (para `kind load docker-image`) | ✔ | — |
-| AWS CLI v2 (também usado na autenticação do provider Kubernetes) | — | ✔ |
+| AWS CLI v2 | — | ✔ |
+| kubectl (para conferir o cluster) | ✔ | ✔ |
 
 ## Variáveis e credenciais
 
@@ -96,7 +91,7 @@ O que precisa ser obtido fora do repositório:
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | AWS Academy → Learner Lab → **Start Lab** → **AWS Details** → **AWS CLI: Show**. Expiram quando a sessão do lab termina; a cada novo Start Lab é preciso copiá-las de novo (como variáveis de ambiente ou em `~/.aws/credentials`) | `prd` |
 | Nome do bucket do state | Escolhido por você no passo 2 do `prd`. O nome precisa ser único em todo o S3, ex.: `oficina-tfstate-<seu-usuario>` | `prd` |
 | `roleName` | `voclabs` na AWS Academy. Confira com `aws sts get-caller-identity`: o ARN mostra `assumed-role/voclabs/...` | `prd` |
-| Senha do banco | Não é informada: o Terraform gera. Para consultar a URL completa: `kubectl get secret oficina-db -n oficina -o jsonpath="{.data.DATABASE_URL}" \| base64 -d` | `dev` e `prd` |
+| Senha do banco | Não é informada: o Terraform gera. A URL completa sai em `terraform output -raw databaseUrl` | `dev` e `prd` |
 
 O Terraform não lê o `.env` da raiz do projeto, que é usado apenas pelo `docker compose`. O
 `APP_ENV` também não é lido pelo Terraform nem pela API: é uma variável do shell que só escolhe o
@@ -126,10 +121,7 @@ terraform apply
 terraform output -raw kubeconfig > kubeconfig-dev.yaml
 export KUBECONFIG=$PWD/kubeconfig-dev.yaml
 kubectl get nodes
-
-# imagem da API dentro do cluster (o kind não puxa imagens locais sozinho)
-docker build -t oficina-api:dev ../../..
-kind load docker-image oficina-api:dev --name oficina-dev
+kubectl get pods -n database
 ```
 
 Para remover tudo: `terraform destroy`.
@@ -163,50 +155,49 @@ Para remover tudo: `terraform destroy`.
    kubectl get nodes
    ```
 
-4. **Ao terminar, rode `terraform destroy`.** O EKS, os nós e o RDS consomem crédito da AWS Academy enquanto existem.
+4. **Ao terminar, rode `terraform destroy`.** O EKS, os nós e o RDS consomem crédito da AWS Academy
+   enquanto existem, mesmo depois que a sessão do lab termina.
 
 ## Outputs
 
 | Output | `dev` | `prd` | Uso |
 |---|---|---|---|
+| `environment` | ✔ | ✔ | Ambiente provisionado |
 | `clusterName` | ✔ | ✔ | Nome do cluster |
-| `namespace` | ✔ | ✔ | Namespace onde aplicar os manifests |
-| `databaseSecretName` | ✔ | ✔ | Secret com a `DATABASE_URL` |
 | `databaseHost` | ✔ | ✔ | Host do banco |
+| `databaseUrl` (sensível) | ✔ | ✔ | `DATABASE_URL` da API: `terraform output -raw databaseUrl` |
 | `kubeconfig` (sensível) | ✔ | — | `terraform output -raw kubeconfig` |
-| `apiUrl` | ✔ | — | URL da API no localhost |
-| `loadImageCommand` | ✔ | — | Comando para carregar a imagem no kind |
+| `apiUrl` | ✔ | — | URL no localhost encaminhada para o NodePort `30080` |
 | `kubeconfigCommand` | — | ✔ | Comando `aws eks update-kubeconfig` |
 | `clusterEndpoint` | — | ✔ | Endpoint da API do Kubernetes |
 | `ecrRepositoryUrl` | — | ✔ | Destino do `docker push` no CI |
 
-## Contrato com os manifests em `/k8s`
+## Integração com `/k8s`
 
-O Terraform cria a base, e os manifests consomem estes valores:
+O Terraform não cria nada da aplicação dentro do cluster. O que ele entrega para os manifests:
 
-| Item | Valor | Quem cria |
-|---|---|---|
-| Namespace | `oficina` | Terraform |
-| Secret da conexão com o banco | `oficina-db`, chave `DATABASE_URL` | Terraform |
-| metrics-server | instalado em `kube-system` | Terraform |
-| Service da API (dev) | `type: NodePort`, `nodePort: 30080` → `http://localhost:8080` | `/k8s` |
-| Imagem da API | dev: `oficina-api:<tag>` via `kind load`; prd: `ecrRepositoryUrl:<tag>` | CI / `/k8s` |
-| Demais segredos (ex.: `JWT_SECRET_KEY`) | Secret próprio dos manifests | `/k8s` |
+| Item | Valor |
+|---|---|
+| Conexão com o banco | `terraform output -raw databaseUrl` |
+| Porta exposta no dev | NodePort `30080` publicado em `http://localhost:8080` (o Service da API precisa usar `nodePort: 30080`) |
+| Registry da imagem no prd | `terraform output -raw ecrRepositoryUrl` |
 
-Exemplo de uso no Deployment:
+Exemplo de como os manifests ou o CI podem criar o Secret da API a partir do output:
 
-```yaml
-envFrom:
-  - secretRef:
-      name: oficina-db
+```bash
+kubectl create secret generic oficina-db -n oficina \
+  --from-literal=DATABASE_URL="$(terraform output -raw databaseUrl)"
 ```
+
+O HPA precisa do metrics-server, que também fica com `/k8s`. No kind, ele exige o argumento
+`--kubelet-insecure-tls`, porque o kubelet usa certificado autoassinado.
 
 ## Observações
 
 - **Senhas:** são geradas com `random_password` e ficam apenas no state. No `prd`, o state fica
   no S3; no `dev`, fica no `terraform.tfstate` local, que está no `.gitignore`.
-- **Providers Kubernetes/Helm configurados a partir do cluster:** funciona no primeiro `apply`. Se o
-  cluster precisar ser recriado, aplique em duas etapas:
+- **Provider Kubernetes no dev:** usado só para o Postgres, configurado a partir do cluster criado no
+  mesmo `apply`. Se o cluster precisar ser recriado, aplique em duas etapas:
   `terraform apply -target=module.cluster` e depois `terraform apply`.
 - **AWS Academy:** não é possível criar roles IAM. Por isso o cluster e os nós usam a `LabRole`
   existente (`data "aws_iam_role"`), e a rede é a VPC default (`data "aws_vpc"`).
@@ -217,8 +208,6 @@ envFrom:
 
 - [Documentação do provider AWS (hashicorp/aws)](https://registry.terraform.io/providers/hashicorp/aws/latest/docs): referência usada para os recursos `aws_eks_cluster`, `aws_eks_node_group`, `aws_eks_access_entry`, `aws_eks_access_policy_association`, `aws_db_instance`, `aws_db_subnet_group`, `aws_security_group`, `aws_ecr_repository` e os data sources de VPC, subnets e IAM
 - [Provider Kubernetes (hashicorp/kubernetes)](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs)
-- [Provider Helm (hashicorp/helm)](https://registry.terraform.io/providers/hashicorp/helm/latest/docs)
 - [Provider kind (tehcyx/kind)](https://registry.terraform.io/providers/tehcyx/kind/latest/docs)
 - [Backend S3](https://developer.hashicorp.com/terraform/language/backend/s3)
-- [Chart do metrics-server](https://github.com/kubernetes-sigs/metrics-server/tree/master/charts/metrics-server)
 - Material da disciplina FIAP POSTECH SOAT, Fase 2, aulas 1 a 9 (Terraform)
