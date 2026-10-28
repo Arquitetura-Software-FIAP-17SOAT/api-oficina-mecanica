@@ -22,6 +22,12 @@ variable "tags" {
   default     = {}
 }
 
+variable "console_role_name" {
+  description = "Role IAM usada no Console AWS que precisa ver os recursos do cluster"
+  type        = string
+  default     = "AccountFullAccessRole"
+}
+
 variable "instance_type" {
   type    = string
   default = "c7i-flex.large" # conta Free Tier: t3.medium não é elegível
