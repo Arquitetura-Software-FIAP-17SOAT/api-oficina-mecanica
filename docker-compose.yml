@@ -9,12 +9,32 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - '5432:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d oficina"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d oficina']
       interval: 10s
       timeout: 5s
       retries: 5
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oficina_seed
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/oficina
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-segredo-jwt-somente-para-desenvolvimento}
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRE_MINUTES: 60
+      INTEGRACAO_API_KEY: ${INTEGRACAO_API_KEY:-chave-integracao-somente-para-desenvolvimento}
+      SEED_DADOS_EXEMPLO: 'true'
+    command: ['python', '-m', 'adapters.database.seeders.executar']
+    restart: 'no'
 
   api:
     build:
@@ -22,20 +42,18 @@ services:
       dockerfile: Dockerfile
     container_name: oficina_app
     ports:
-      - "8000:8000"
+      - '8000:8000'
     depends_on:
       db:
         condition: service_healthy
+      seed:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/oficina
-      # Valores de DESENVOLVIMENTO: funcionam sem configurar nada. Em produção, defina no .env.
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-segredo-jwt-somente-para-desenvolvimento}
       JWT_ALGORITHM: HS256
       JWT_EXPIRE_MINUTES: 60
       INTEGRACAO_API_KEY: ${INTEGRACAO_API_KEY:-chave-integracao-somente-para-desenvolvimento}
-      SEED_DADOS_EXEMPLO: "true"
-    volumes:
-      - .:/app
     restart: unless-stopped
 
 volumes:
