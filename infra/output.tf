@@ -18,3 +18,7 @@ output "subnet_cidr" {
 output "subnet_id" {
   value = aws_subnet.subnet_public[0].id
 }
+
+output "ecr_repository_url" {
+  value = aws_ecr_repository.ecr_repository.repository_url
+}
