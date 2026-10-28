@@ -112,6 +112,16 @@ A configuração está em `pyproject.toml`; ficam de fora só `main.py` e as int
 
 ## Estado da Fase 2
 
+A configuração em `terraform/` prepara a rede AWS e um bucket S3 para uso futuro
+como backend; ainda não provisiona Kubernetes. As sub-redes têm rota padrão pelo
+Internet Gateway. O bucket usa o nome `<projeto>-tfstate-<conta>-<região>`, com
+versionamento, criptografia e bloqueio público. Execute `terraform init`,
+`terraform validate` e `terraform plan` nessa pasta e revise antes de aplicar.
+O estado permanece **local**: criar o bucket não o migra automaticamente.
+Guarde o estado e, caso decida migrar depois, faça backup e configure o backend
+com o nome obtido por `terraform output -raw state_bucket_name`, usando
+`terraform init -migrate-state`.
+
 | Item do enunciado | Situação |
 |---|---|
 | Clean Code, Clean Architecture/Hexagonal e testes automatizados | Concluído |
