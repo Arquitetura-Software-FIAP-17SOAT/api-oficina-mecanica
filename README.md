@@ -110,26 +110,6 @@ São 704 testes, com 99% de cobertura nos quatro pacotes (mínimo exigido: 80% n
 A configuração está em `pyproject.toml`; ficam de fora só `main.py` e as interfaces abstratas
 `domain/repositories/*`.
 
-## Estado da Fase 2
-
-A configuração em `terraform/` prepara a rede AWS e um bucket S3 para uso futuro
-como backend; ainda não provisiona Kubernetes. As sub-redes têm rota padrão pelo
-Internet Gateway. O bucket usa o nome `<projeto>-tfstate-<conta>-<região>`, com
-versionamento, criptografia e bloqueio público. Execute `terraform init`,
-`terraform validate` e `terraform plan` nessa pasta e revise antes de aplicar.
-O estado permanece **local**: criar o bucket não o migra automaticamente.
-Guarde o estado e, caso decida migrar depois, faça backup e configure o backend
-com o nome obtido por `terraform output -raw state_bucket_name`, usando
-`terraform init -migrate-state`.
-
-| Item do enunciado | Situação |
-|---|---|
-| Clean Code, Clean Architecture/Hexagonal e testes automatizados | Concluído |
-| APIs: abertura de OS, consulta de status, aprovação de orçamento externa, listagem ordenada com exclusão lógica e atualização de status por ferramenta externa | Concluído |
-| Dockerfile e docker-compose revisados | Em andamento (funcionam em desenvolvimento) |
-| Manifestos Kubernetes (`/k8s`), Terraform (`/infra`) e pipeline de CI/CD | Pendente |
-| Collection das APIs, desenho da infraestrutura e vídeo | Pendente |
-
 ## Limitações conhecidas
 
 - **Cadastro de usuários aberto:** `POST /users/register` é público e não há perfis; todo usuário
