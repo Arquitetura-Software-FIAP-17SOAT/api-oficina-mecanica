@@ -9,7 +9,7 @@ variable "projectName" {
 }
 
 variable "region_default" {
-  default = "us-east-1"
+  default = "us-east-2"
 }
 
 variable "cidr_vpc" {
@@ -20,4 +20,9 @@ variable "tags" {
   description = "Tags padrao de todos os recursos AWS"
   type        = map(string)
   default     = {}
+}
+
+variable "instance_type" {
+  type    = string
+  default = "t3.medium"
 }
