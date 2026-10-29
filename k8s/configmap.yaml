@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oficina-api-config
+  namespace: oficina
+  labels:
+    app: oficina-api
+data:
+  # Configuracoes nao sensiveis da aplicacao.
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRE_MINUTES: "60"
+  SEED_DADOS_EXEMPLO: "false"
+
+  # Banco de dados (RDS PostgreSQL). Preencher apos o terraform apply.
+  # DB_HOST: valor de `terraform output rds_endpoint`.
+  DB_HOST: "<RDS_ENDPOINT>"
+  DB_PORT: "5432"
+  DB_NAME: "oficina"
+  DB_USER: "postgres"
