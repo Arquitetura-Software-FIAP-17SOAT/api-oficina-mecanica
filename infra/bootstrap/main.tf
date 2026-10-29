@@ -11,8 +11,20 @@ provider "aws" {
   region = "us-east-2"
 }
 
+data "aws_caller_identity" "current" {}
+
+variable "state_bucket_name" {
+  description = "Nome do bucket do state. Vazio = terraform-oficina-<account_id>. Em ambiente ja criado com outro nome, informe-o para nao recriar o bucket."
+  type        = string
+  default     = ""
+}
+
+locals {
+  state_bucket_name = var.state_bucket_name != "" ? var.state_bucket_name : "terraform-oficina-${data.aws_caller_identity.current.account_id}"
+}
+
 resource "aws_s3_bucket" "state" {
-  bucket        = "terraform-oficina"
+  bucket        = local.state_bucket_name
   force_destroy = false
 
   lifecycle {

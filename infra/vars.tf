@@ -23,12 +23,35 @@ variable "tags" {
 }
 
 variable "console_role_name" {
-  description = "Role IAM usada no Console AWS que precisa ver os recursos do cluster"
+  description = "Role IAM do Console AWS que deve enxergar o cluster. Deixe vazio para nao criar o acesso. Exemplo: AccountFullAccessRole"
   type        = string
-  default     = "AccountFullAccessRole"
+  default     = ""
+}
+
+variable "admin_principal_arn" {
+  description = "ARN do usuario/role IAM administrador do EKS. Vazio = quem executa o Terraform (se usar role assumida, informe o ARN da role IAM)"
+  type        = string
+  default     = ""
 }
 
 variable "instance_type" {
   type    = string
-  default = "c7i-flex.large" # conta Free Tier: t3.medium não é elegível
+  default = "c7i-flex.large"
+}
+
+variable "db_name" {
+  default = "oficina"
+}
+
+variable "db_username" {
+  default = "postgres"
+}
+
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "db_instance_class" {
+  default = "db.t3.micro"
 }

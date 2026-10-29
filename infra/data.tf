@@ -1,7 +1,6 @@
-data "aws_iam_user" "principal_user" {
-  user_name = "11-soat-tf"
-}
+data "aws_caller_identity" "current" {}
 
 data "aws_iam_role" "console_role" {
-  name = var.console_role_name
+  count = var.console_role_name == "" ? 0 : 1
+  name  = var.console_role_name
 }

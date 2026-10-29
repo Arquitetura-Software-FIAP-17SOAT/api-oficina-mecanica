@@ -1,8 +1,3 @@
-output "state_bucket_name" {
-  description = "Bucket criado para futura migracao do estado; o backend atual permanece local."
-  value       = aws_s3_bucket.bucket-backend.id
-}
-
 output "vpc_cidr" {
   value = aws_vpc.vpc_fiap.cidr_block
 }
@@ -21,4 +16,8 @@ output "subnet_id" {
 
 output "ecr_repository_url" {
   value = aws_ecr_repository.ecr_repository.repository_url
+}
+
+output "rds_endpoint" {
+  value = aws_db_instance.postgres.address
 }
