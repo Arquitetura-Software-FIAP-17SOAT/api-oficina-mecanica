@@ -41,6 +41,11 @@ pip-wheel-metadata/
 uploads/
 tmp/
 temp/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
 *.pem
 *.key
 *.crt

@@ -1,0 +1,8 @@
+# Copie para terraform.tfvars (ignorado pelo git) e ajuste conforme a sua conta AWS.
+# Nao coloque db_password aqui: use $env:TF_VAR_db_password.
+
+# Role IAM do Console AWS que deve enxergar o cluster. Vazio = nao cria o acesso.
+console_role_name = "AccountFullAccessRole"
+
+# ARN do administrador do EKS. Vazio = quem executa o Terraform.
+# admin_principal_arn = "arn:aws:iam::<account_id>:user/<usuario>"

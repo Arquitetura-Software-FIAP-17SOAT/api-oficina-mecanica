@@ -112,6 +112,27 @@ A configuração está em `pyproject.toml`; ficam de fora só `main.py` e as int
 
 ## Estado da Fase 2
 
+A configuração em `infra/` provisiona na AWS a rede (VPC, sub-redes e Internet
+Gateway), o cluster EKS com seu node group, o repositório ECR e o banco PostgreSQL
+(RDS). O state fica em um bucket S3 remoto, com lock (`use_lockfile`).
+
+**Pré-requisitos e variáveis**
+
+- `infra/bootstrap/`: cria o bucket do state (`terraform-oficina-<account_id>`, com
+  versionamento, criptografia e bloqueio público). Rode uma vez por conta. Para um
+  bucket já existente com outro nome, use `-var state_bucket_name=<nome>`.
+- Backend: o bucket não aceita variável no bloco `backend`; informe-o no init:
+  `terraform init -backend-config="bucket=terraform-oficina-<account_id>"`.
+- `db_password` (obrigatória, sensível): `$env:TF_VAR_db_password = "..."`. Use só
+  letras e números (o RDS não aceita `/`, `@`, `"` nem espaço).
+- `admin_principal_arn` (opcional): ARN do usuário/role IAM administrador do EKS.
+  Vazio usa quem executa o Terraform; com role assumida (SSO), informe o ARN da role IAM.
+- `console_role_name` (opcional): role IAM do Console AWS que deve enxergar o
+  cluster (ex.: `AccountFullAccessRole`). Vazio não cria o acesso.
+
+Execute `terraform init`, `terraform validate` e `terraform plan` em `infra/` e
+revise antes de aplicar.
+
 | Item do enunciado | Situação |
 |---|---|
 | Clean Code, Clean Architecture/Hexagonal e testes automatizados | Concluído |
