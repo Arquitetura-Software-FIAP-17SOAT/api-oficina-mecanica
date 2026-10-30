@@ -17,9 +17,7 @@ spec:
     spec:
       containers:
         - name: oficina-api
-          # Preencher com a URI do ECR e a tag da imagem.
-          # Obter com: terraform output ecr_repository_url
-          image: "<ECR_URI>:<TAG>"
+          image: "337952094225.dkr.ecr.us-east-2.amazonaws.com/repositorio-oficina:2b772b0cfc1ebba1ae846ed5ce8a95f42a1f5707"
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000

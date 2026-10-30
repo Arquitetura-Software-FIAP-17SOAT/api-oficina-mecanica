@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: oficina
+
+# O secret.yaml fica de fora: é só um template e sobrescreveria o Secret real.
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+
+# O pipeline troca a tag (newTag) pelo SHA do commit a cada deploy.
+images:
+  - name: 337952094225.dkr.ecr.us-east-2.amazonaws.com/repositorio-oficina
+    newTag: 2b772b0cfc1ebba1ae846ed5ce8a95f42a1f5707
