@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from application.ports.token_decoder import TokenDecoder, TokenInvalidoError
 from presentation.dependencies.dependencies import get_token_decoder
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/token")
 
 CREDENCIAIS_INVALIDAS = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,

@@ -56,3 +56,33 @@ def test_login_falha_com_credenciais_invalidas(client):
     )
 
     assert response.status_code == 401
+
+
+def test_token_form_com_sucesso(client):
+    client.post(
+        "/users/register",
+        json={
+            "name": "João Silva",
+            "email": "joao@example.com",
+            "password": "senha123",
+        },
+    )
+
+    response = client.post(
+        "/users/token",
+        data={"username": "joao@example.com", "password": "senha123"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token_type"] == "bearer"
+    assert body["access_token"]
+
+
+def test_token_form_falha_com_credenciais_invalidas(client):
+    response = client.post(
+        "/users/token",
+        data={"username": "nao-existe@example.com", "password": "senha123"},
+    )
+
+    assert response.status_code == 401

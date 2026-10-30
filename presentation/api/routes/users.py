@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, status
+from fastapi.security import OAuth2PasswordRequestForm
 
 from application.commands.register_user import (
     RegisterUserCommand,
@@ -63,6 +64,29 @@ async def login(
         command = LoginUserCommand(
             email=request.email,
             password=request.password,
+        )
+
+        token = await use_case.execute(command)
+
+        return LoginResponse(
+            access_token=token,
+        )
+
+
+@router.post(
+    "/token",
+    response_model=LoginResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Login via formulário OAuth2 (botão Authorize do Swagger)",
+)
+async def login_form(
+    form: OAuth2PasswordRequestForm = Depends(),
+    use_case: LoginUserUseCase = Depends(get_login_user_use_case),
+):
+    with traduzir_value_error(status.HTTP_401_UNAUTHORIZED):
+        command = LoginUserCommand(
+            email=form.username,
+            password=form.password,
         )
 
         token = await use_case.execute(command)
