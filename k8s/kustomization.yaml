@@ -14,4 +14,4 @@ resources:
 # O pipeline troca a tag (newTag) pelo SHA do commit a cada deploy.
 images:
   - name: 337952094225.dkr.ecr.us-east-2.amazonaws.com/repositorio-oficina
-    newTag: 19e6b167d67e94f8d50f09df30b1417895a3e427
+    newTag: e2874f61bbec388860ee2df91e79745faf10b730
