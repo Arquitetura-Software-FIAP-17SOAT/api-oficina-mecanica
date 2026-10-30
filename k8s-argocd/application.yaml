@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: oficina-api
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Arquitetura-Software-FIAP-17SOAT/api-oficina-mecanica.git
+    targetRevision: main
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: oficina
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  # O HPA controla o numero de replicas; sem isso o Argo brigaria com ele.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

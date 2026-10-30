@@ -1,7 +1,9 @@
-name: Build e push da imagem
+name: CI/CD
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -12,7 +14,25 @@ env:
   ECR_REPOSITORY: repositorio-oficina
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Instalar dependencias
+        run: uv sync --frozen --group dev
+
+      - name: Testes unitarios e de integracao (cobertura minima de 80%)
+        run: uv run pytest -q --cov --cov-report=term-missing --cov-fail-under=80
+
   build-push:
+    needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: AWS
     steps:
@@ -35,3 +55,21 @@ jobs:
           docker build -t $REGISTRY/$ECR_REPOSITORY:$TAG -t $REGISTRY/$ECR_REPOSITORY:latest .
           docker push $REGISTRY/$ECR_REPOSITORY:$TAG
           docker push $REGISTRY/$ECR_REPOSITORY:latest
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # O Argo CD detecta o commit e sincroniza o cluster com a nova tag.
+      # [skip ci] evita que este commit dispare o pipeline de novo.
+      - name: Atualizar a tag da imagem no kustomization
+        run: |
+          sed -i "s/newTag: .*/newTag: ${{ github.sha }}/" k8s/kustomization.yaml
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git commit -am "deploy: imagem ${{ github.sha }} [skip ci]"
+          git push

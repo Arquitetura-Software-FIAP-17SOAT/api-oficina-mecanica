@@ -42,3 +42,22 @@ moved {
   from = aws_eks_access_policy_association.console_access_entry_association
   to   = aws_eks_access_policy_association.console_access_entry_association[0]
 }
+
+resource "aws_eks_access_entry" "ci" {
+  count         = var.ci_principal_arn == "" ? 0 : 1
+  cluster_name  = aws_eks_cluster.cluster.name
+  principal_arn = var.ci_principal_arn
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "ci" {
+  count         = var.ci_principal_arn == "" ? 0 : 1
+  cluster_name  = aws_eks_cluster.cluster.name
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"
+  principal_arn = aws_eks_access_entry.ci[0].principal_arn
+
+  access_scope {
+    type       = "namespaces"
+    namespaces = ["oficina"]
+  }
+}

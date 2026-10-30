@@ -34,6 +34,12 @@ variable "admin_principal_arn" {
   default     = ""
 }
 
+variable "ci_principal_arn" {
+  description = "ARN do usuario IAM usado pelo pipeline (GitHub Actions) para fazer deploy no namespace oficina. Vazio = nao cria o acesso"
+  type        = string
+  default     = ""
+}
+
 variable "instance_type" {
   type    = string
   default = "c7i-flex.large"
