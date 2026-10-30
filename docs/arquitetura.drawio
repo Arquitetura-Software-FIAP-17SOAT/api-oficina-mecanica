@@ -1,0 +1,201 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram id="infra" name="Infraestrutura">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1250" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="Arquitetura da API Oficina Mecânica na AWS" style="text;html=1;fontSize=22;fontStyle=1;fontColor=#232F3E;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="-30" width="700" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="users" value="Usuários e&lt;br&gt;sistemas externos" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.users;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="64" height="64" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="aws" value="AWS Cloud - us-east-2" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="180" y="20" width="940" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ecr" value="ECR&lt;br&gt;repositorio-oficina" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecr;" vertex="1" parent="aws">
+          <mxGeometry x="60" y="60" width="64" height="64" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3" value="S3 terraform-oficina&lt;br&gt;state do Terraform" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#7AA116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" vertex="1" parent="aws">
+          <mxGeometry x="800" y="60" width="64" height="64" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="vpc" value="VPC vpc_fiap - 10.0.0.0/16 (3 sub-redes públicas em 3 zonas)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc2;strokeColor=#8C4FFF;fillColor=#F8F4FF;verticalAlign=top;align=left;spacingLeft=30;fontColor=#8C4FFF;dashed=0;" vertex="1" parent="aws">
+          <mxGeometry x="30" y="180" width="880" height="490" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="elb" value="Load Balancer&lt;br&gt;Service oficina-api :80" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elastic_load_balancing;" vertex="1" parent="vpc">
+          <mxGeometry x="40" y="210" width="64" height="64" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="eks" value="EKS eks-oficina - 2 nós c7i-flex.large (mín. 1, máx. 3)" style="rounded=1;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;verticalAlign=top;align=left;spacingLeft=14;fontStyle=1;fontSize=13;fontColor=#C25A00;fillColor=#FFF4E8;strokeColor=#ED7100;strokeWidth=2;arcSize=3;" vertex="1" parent="vpc">
+          <mxGeometry x="170" y="50" width="520" height="420" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="nsapp" value="namespace oficina" style="rounded=1;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;verticalAlign=top;align=left;spacingLeft=12;fontStyle=1;fontColor=#1F4FB0;fillColor=#E8F1FB;strokeColor=#326CE5;dashed=1;strokeWidth=2;arcSize=4;" vertex="1" parent="eks">
+          <mxGeometry x="20" y="45" width="480" height="215" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="api" value="&lt;b&gt;Deployment oficina-api&lt;/b&gt;&lt;br&gt;FastAPI na porta 8000&lt;br&gt;2 a 3 pods" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#1F4FB0;fontColor=#FFFFFF;fontSize=12;arcSize=12;" vertex="1" parent="nsapp">
+          <mxGeometry x="290" y="60" width="170" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hpa" value="&lt;b&gt;HPA&lt;/b&gt;&lt;br&gt;escala com 70% de CPU" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#326CE5;fontColor=#1F4FB0;fontSize=12;arcSize=12;" vertex="1" parent="nsapp">
+          <mxGeometry x="20" y="40" width="150" height="55" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cfg" value="&lt;b&gt;ConfigMap&lt;/b&gt;&lt;br&gt;oficina-api-config" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#326CE5;fontColor=#1F4FB0;fontSize=12;arcSize=12;" vertex="1" parent="nsapp">
+          <mxGeometry x="20" y="110" width="150" height="45" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sec" value="&lt;b&gt;Secret&lt;/b&gt;&lt;br&gt;oficina-api-secret" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C0392B;fontColor=#C0392B;fontSize=12;arcSize=12;" vertex="1" parent="nsapp">
+          <mxGeometry x="20" y="165" width="150" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="nsargo" value="namespace argocd" style="rounded=1;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;verticalAlign=top;align=left;spacingLeft=12;fontStyle=1;fontColor=#C25A00;fillColor=#FFFFFF;strokeColor=#EF7B4D;dashed=1;strokeWidth=2;arcSize=6;" vertex="1" parent="eks">
+          <mxGeometry x="20" y="290" width="210" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="argo" value="&lt;b&gt;Argo CD&lt;/b&gt;&lt;br&gt;sincroniza o k8s/ do Git" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EF7B4D;strokeColor=#C25A00;fontColor=#FFFFFF;fontSize=12;arcSize=12;" vertex="1" parent="nsargo">
+          <mxGeometry x="20" y="40" width="170" height="55" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="metrics" value="&lt;b&gt;metrics-server&lt;/b&gt;&lt;br&gt;(kube-system)&lt;br&gt;fornece CPU ao HPA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#326CE5;fontColor=#1F4FB0;fontSize=12;arcSize=12;" vertex="1" parent="eks">
+          <mxGeometry x="300" y="300" width="200" height="75" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rds" value="RDS PostgreSQL 16&lt;br&gt;rds-oficina&lt;br&gt;sem acesso público" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#C925D1;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.rds;" vertex="1" parent="vpc">
+          <mxGeometry x="770" y="210" width="64" height="64" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e1" value="1. HTTP" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#232F3E;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="users" target="elb">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="2. encaminha" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#232F3E;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="elb" target="api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="3. PostgreSQL 5432 (SSL)&lt;br&gt;liberado só para o EKS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#C925D1;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="api" target="rds">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="pull da imagem" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeWidth=2;strokeColor=#ED7100;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ecr" target="api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="ajusta réplicas" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeWidth=2;strokeColor=#326CE5;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="hpa" target="api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="métricas" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeWidth=2;strokeColor=#326CE5;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="metrics" target="hpa">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" value="variáveis" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeWidth=2;strokeColor=#326CE5;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="cfg" target="api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" value="credenciais" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeWidth=2;strokeColor=#C0392B;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="sec" target="api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legenda" value="&lt;b&gt;Legenda&lt;/b&gt;&lt;br&gt;Seta contínua: fluxo de requisições&lt;br&gt;Seta tracejada: configuração e dependências&lt;br&gt;Banco gerenciado (RDS), fora do cluster" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#FFFFFF;strokeColor=#9AA5B1;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="120" height="110" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="cicd" name="CI/CD e deploy">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1250" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="Fluxo de CI/CD e deploy (GitOps)" style="text;html=1;fontSize=22;fontStyle=1;fontColor=#232F3E;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="700" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dev" value="Desenvolvedor" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.user;" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="64" height="64" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="repo" value="&lt;b&gt;GitHub&lt;/b&gt;&lt;br&gt;repositório&lt;br&gt;branch main" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#24292F;strokeColor=#24292F;fontColor=#FFFFFF;fontSize=13;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="190" y="195" width="140" height="75" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="gha" value="GitHub Actions - pipeline CI/CD" style="rounded=1;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;verticalAlign=top;align=left;spacingLeft=14;fontStyle=1;fontSize=13;fontColor=#1F4FB0;fillColor=#EAF2FF;strokeColor=#2088FF;strokeWidth=2;arcSize=4;" vertex="1" parent="1">
+          <mxGeometry x="400" y="90" width="500" height="240" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="test" value="&lt;b&gt;1. test&lt;/b&gt;&lt;br&gt;pytest&lt;br&gt;cobertura mínima 80%" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2088FF;fontColor=#1F4FB0;fontSize=12;arcSize=12;" vertex="1" parent="gha">
+          <mxGeometry x="20" y="75" width="130" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="build" value="&lt;b&gt;2. build-push&lt;/b&gt;&lt;br&gt;docker build&lt;br&gt;e push da imagem" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2088FF;fontColor=#1F4FB0;fontSize=12;arcSize=12;" vertex="1" parent="gha">
+          <mxGeometry x="185" y="75" width="130" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="deploy" value="&lt;b&gt;3. deploy&lt;/b&gt;&lt;br&gt;troca a tag em&lt;br&gt;k8s/kustomization.yaml" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2088FF;fontColor=#1F4FB0;fontSize=12;arcSize=12;" vertex="1" parent="gha">
+          <mxGeometry x="350" y="75" width="130" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ecr" value="ECR&lt;br&gt;repositorio-oficina" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecr;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="110" width="64" height="64" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="argo" value="&lt;b&gt;Argo CD&lt;/b&gt;&lt;br&gt;(dentro do cluster)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EF7B4D;strokeColor=#C25A00;fontColor=#FFFFFF;fontSize=13;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="560" y="440" width="170" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="eks" value="EKS eks-oficina&lt;br&gt;namespace oficina&lt;br&gt;rolling update" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eks;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="440" width="64" height="64" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="f0" value="push na main" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#232F3E;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="dev" target="repo">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="f1" value="dispara" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#232F3E;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="repo" target="test">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="f2" value="passou" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#2088FF;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="test" target="build">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="f3" value="imagem pronta" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#2088FF;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="build" target="deploy">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="f4" value="4. push da imagem&lt;br&gt;tag = SHA do commit" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#ED7100;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="build" target="ecr">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="60"/>
+              <mxPoint x="1000" y="60"/>
+              <mxPoint x="1000" y="142"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f5" value="5. commit da nova tag" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#232F3E;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" parent="1" source="deploy" target="repo">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="815" y="380"/>
+              <mxPoint x="260" y="380"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f6" value="6. detecta a mudança&lt;br&gt;no Git" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#EF7B4D;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0;entryY=0.5;" edge="1" parent="1" source="repo" target="argo">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="260" y="475"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f7" value="7. aplica o k8s/" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeWidth=3;strokeColor=#EF7B4D;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="argo" target="eks">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="f8" value="8. nós baixam a imagem" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeWidth=2;strokeColor=#ED7100;fontSize=12;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ecr" target="eks">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="nota" value="O pipeline não tem acesso ao cluster: quem aplica as mudanças é o Argo CD, que puxa do Git (GitOps)." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#FFFBE6;strokeColor=#E0C200;fontSize=12;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="520" height="50" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
