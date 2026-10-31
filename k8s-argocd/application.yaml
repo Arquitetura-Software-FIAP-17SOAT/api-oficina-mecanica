@@ -18,6 +18,7 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
   # O HPA controla o numero de replicas; sem isso o Argo brigaria com ele.
   ignoreDifferences:
     - group: apps
